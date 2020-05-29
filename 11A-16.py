@@ -169,5 +169,6 @@ def main():
     compfit = sp.component_fitting(full = True)
     print(compfit)
     '''
+    test
 
 main()
