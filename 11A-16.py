@@ -124,6 +124,7 @@ def main():
         name = inpt[i][0:3]
         data_plot(data = new[1], fax = new[2], tag = name)
     '''
+    '''
     new = start(filename = '11A_16sec.calib.4p')
     #count = 1
     #av = []
@@ -162,12 +163,6 @@ def main():
             comp4.append(np.nan)
     mus = [comp1, comp2, comp3, comp4]
     pplot(param = mus, pname = 'Center', fax = new[2], tag = '11A')
-    '''
-    new = start(filename = '11A_16sec.calib.4p')
-    new1 = find_peak(data = new[1])
-    sp = p.SinglePulse(data = new1[1], windowsize = 256)
-    compfit = sp.component_fitting(full = True)
-    print(compfit)
     '''
 
 main()
