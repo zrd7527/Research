@@ -8,9 +8,9 @@ def start(filename):
     ar = p.Archive(filename)
     ar.dedisperse(reverse = True)
     rm = mitigate(ar)
-    #nulow = [8000]
-    #nuhigh = [8400]
-    #zap_freq(rm, nulows = nulow, nuhighs = nuhigh)
+    nulows = [7800]
+    nuhighs = [8400]
+    zap_freq(rm, nulows = nulows, nuhighs = nuhighs)
     ar.bscrunch(nbins = 2048, factor = 4)       # Average Burst in Phase
     ar.fscrunch(nchan = 19456, factor = 304)    # Average Burst in Frequency
     data = ar.getData()
@@ -35,6 +35,19 @@ def burst_prop(burst):
     FWHM = sp.getFWHM()
     SN = sp.getSN()
     return(sp, FWHM, SN)
+
+def freq_av(data):
+    ''' Simple average in Frequency '''
+    tot = []
+    count = 1
+    for i in range(0, len(data)):
+        if i == 0:
+            tot = data[i]
+        else:
+            tot += data[i]
+            count += 1
+    av = tot/count
+    return(av)
 
 def mitigate(ar):
     ''' Finds and Removes Dead Channels '''
@@ -103,66 +116,58 @@ def data_plot(data, fax, tag):
     plt.savefig(tag + '_Data')
     cbar.remove()
 
-def pplot(param, pname, fax, tag):
-    ''' Plots Input Fit Parameter vs Frequency '''
-    for i in param:
+def freq_plot(data, name, fax, tag, labels, log):
+    ''' Simple Plot of Input Arrays vs Frequency '''
+    for i in data:
         plt.plot(fax, i)
-    labels = ('Comp 1', 'Comp 2', 'Comp 3', 'Comp 4')
     plt.legend(labels = labels)
-    #plt.yscale('log')
-    #plt.xscale('log')
-    plt.xlabel('Frequency')
-    plt.ylabel(pname)
-    plt.title(pname + ' Versus Frequency of Components of Burst ' + tag)
-    plt.savefig(tag + '_CompMu')
+    if log == True:
+        plt.yscale('log')
+        plt.xscale('log')
+        plt.xlabel('Log Frequency')
+        plt.ylabel('Log ' + name)
+    else:
+        plt.xlabel('Frequency')
+        plt.ylabel(name)
+    plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
+    plt.savefig(tag + '_' + name)
 
 def main():
-    ''' Makes Data Plot with Input Array 
-    inpt = ['11R_1789sec_tot.fits']
-    for i in range(0, len(inpt)):
-        new = start(filename = inpt[i])
-        name = inpt[i][0:3]
-        data_plot(data = new[1], fax = new[2], tag = name)
-    '''
-    '''
     new = start(filename = '11A_16sec.calib.4p')
-    #count = 1
-    #av = []
+    tag = '11A'
+    '''
+    new1 = find_peak(data = new[1])
+    fit(burst = new1[1], mode = 'gaussian', freq = new[2][new1[2]] , tag = '11A', plot = True)
+    '''
     comp1 = []
     comp2 = []
     comp3 = []
     comp4 = []
     for i in range(0, len(new[1])):
-        #if i == 0:
-            #av = new[1][i]
-        #else:
-            #av += new[1][i]
-            #count += 1
-    #newav = av/(count)
-        new1 = fit(burst = new[1][i], mode = 'gaussian', freq = new[2][i], tag = '11A', plot = False)
+        new1 = fit(burst = new[1][i], mode = 'gaussian', freq = new[2][i], tag = tag, plot = False)
         for j in range(0, len(new1[1])):
             if 350 < new1[1][j] < 362:
-                #x = burst_prop(burst = new[1][i][350:362])
-                comp1.append(new1[1][j])
-            elif 363 < new1[1][j] < 370:
-                #x = burst_prop(burst = new[1][i][363:379])
-                comp2.append(new1[1][j])
+                x = burst_prop(burst = new[1][i][350:362])
+                comp1.append(x[1])
+            elif 363 < new1[1][j] < 375:
+                x = burst_prop(burst = new[1][i][363:379])
+                comp2.append(x[1])
             elif 380 < new1[1][j] < 390:
-                #x = burst_prop(burst = new[1][i][371:390])
-                comp3.append(new1[1][j])
+                x = burst_prop(burst = new[1][i][371:390])
+                comp3.append(x[1])
             elif 395 < new1[1][j] < 420:
-                #x = burst_prop(burst = new[1][i][395:420])
-                comp4.append(new1[1][j])
+                x = burst_prop(burst = new[1][i][395:420])
+                comp4.append(x[1])
         if (len(comp1) - 1) < i:
-            comp1.append(np.nan)
+            comp1.append(0)
         if (len(comp2) - 1) < i:
-            comp2.append(np.nan)
+            comp2.append(0)
         if (len(comp3) - 1) < i:
-            comp3.append(np.nan)
+            comp3.append(0)
         if (len(comp4) - 1) < i:
-            comp4.append(np.nan)
-    mus = [comp1, comp2, comp3, comp4]
-    pplot(param = mus, pname = 'Center', fax = new[2], tag = '11A')
-    '''
+            comp4.append(0)
+    comps = [comp1, comp2, comp3, comp4]
+    labels = ('Comp 1', 'Comp 2', 'Comp 3', 'Comp 4')
+    freq_plot(data = comps, name = 'Width', fax = new[2], tag = tag, labels = labels, log = False)
 
 main()
