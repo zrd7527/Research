@@ -149,13 +149,16 @@ def destroy_lower(data, index):
             data[i][j] = 0.0
     return(data)
 
-def comp_param(data, mode, n, fax, tag):
+def comp_param(data, mode, n, mamp, mmu, mwidth, fax, tag):
     ''' In Development
         Finds parameters of data components
         Inputs:
             data - Array of data arrays
             mode - Desired type of fit, gaussian or vonmises
             n - number of components to be fit
+            mamp - Manually entered amplitudes for poor fits, array of arrays
+            mmu - Manually entered centers for poor fits, array of arrays
+            mwidth - Manually entered widths for poor fits, array of arrays
             fax - Frequency axis array
             tag - Burst name, e.g. 11A
         Returns:
@@ -163,47 +166,83 @@ def comp_param(data, mode, n, fax, tag):
             mus - Array of center arrays, organized into separate components
             widths - (not yet included) Array of width arrays, organized into separate components
     '''
-    amp1 = []
-    amp2 = []
-    amp3 = []
-    amp4 = []
-    mu1 = []
-    mu2 = []
-    mu3 = []
-    mu4 = []
+    amps = [ [], [], [], [] ]
+    mus = [ [], [], [], [] ]
+    widths = [ [], [], [], [] ]
     for i in range(0, len(data)):
-        GetFit = fit(burst = data[i], mode = mode, n = n, freq = fax[i], tag = tag, plot = False)
-        for j in range(0, len(GetFit[1])):
-            if 350 < GetFit[1][j] < 362:
-                amp1.append(GetFit[0][j])
-                mu1.append(GetFit[1][j])
-            elif 363 < GetFit[1][j] < 370:
-                amp2.append(GetFit[0][j])
-                mu2.append(GetFit[1][j])
-            elif 380 < GetFit[1][j] < 390:
-                amp3.append(GetFit[0][j])
-                mu3.append(GetFit[1][j])
-            elif 395< GetFit[1][j] < 420:
-                amp4.append(GetFit[0][j])
-                mu4.append(GetFit[1][j])
-        if (len(mu1) - 1) < i:
-            mu1.append(np.nan)
-            amp1.append(0)
-        if (len(mu2) - 1) < i:
-            mu2.append(np.nan)
-            amp2.append(0)
-        if (len(mu3) - 1) < i:
-            mu3.append(np.nan)
-            amp3.append(0)
-        if (len(mu4) - 1) < i:
-            mu4.append(np.nan)
-            amp4.append(0)
-    amps = [amp1, amp2, amp3, amp4]
-    mus = [mu1, mu2, mu3, mu4]
-    return(amps, mus)
+        if i in range(17, 22):
+            amps[0].append(mamp[i-17][0])
+            amps[1].append(mamp[i-17][1])
+            amps[2].append(mamp[i-17][2])
+            amps[3].append(mamp[i-17][3])
+            mus[0].append(mmu[i-17][0])
+            mus[1].append(mmu[i-17][1])
+            mus[2].append(mmu[i-17][2])
+            mus[3].append(mmu[i-17][3])
+            widths[0].append(mwidth[i-17][0])
+            widths[1].append(mwidth[i-17][1])
+            widths[2].append(mwidth[i-17][2])
+            widths[3].append(mwidth[i-17][3])
+        else:
+            GetFit = fit(burst = data[i], mode = mode, n = n, freq = fax[i], tag = tag, plot = False)
+            for j in range(0, len(GetFit[1])):
+                if 350 < GetFit[1][j] < 362:
+                    x = burst_prop(data[i][350:362])
+                    widths[0].append(x[1])
+                    amps[0].append(GetFit[0][j])
+                    mus[0].append(GetFit[1][j])
+                elif 363 < GetFit[1][j] < 370:
+                    if np.sum(data[i][363:379]) != 0:
+                        x = burst_prop(data[i][363:379])
+                        widths[1].append(x[1])
+                    amps[1].append(GetFit[0][j])
+                    mus[1].append(GetFit[1][j])
+                elif 380 < GetFit[1][j] < 390:
+                    x = burst_prop(data[i][371:394])
+                    widths[2].append(x[1])
+                    amps[2].append(GetFit[0][j])
+                    mus[2].append(GetFit[1][j])
+                elif 395< GetFit[1][j] < 420:
+                    x = burst_prop(data[i][391:420])
+                    widths[3].append(x[1])
+                    amps[3].append(GetFit[0][j])
+                    mus[3].append(GetFit[1][j])
+            if (len(mus[0]) - 1) < i:
+                mus[0].append(np.nan)
+                amps[0].append(0)
+                widths[0].append(0)
+            if (len(mus[1]) - 1) < i:
+                mus[1].append(np.nan)
+                amps[1].append(0)
+                widths[1].append(0)
+            if (len(mus[2]) - 1) < i:
+                mus[2].append(np.nan)
+                amps[2].append(0)
+                widths[2].append(0)
+            if (len(mus[3]) - 1) < i:
+                mus[3].append(np.nan)
+                amps[3].append(0)
+                widths[3].append(0)
+    return(amps, mus, widths)
+
+def manual_gaussians(x, amp, mu, sigma):
+    '''
+        Makes Gaussian curves with input parameters
+        Inputs:
+            x - x axis
+            amp - Amplitudes of curves, array
+            mu - Centers of curves, array
+            sigma - Standard deviations of curves, array
+        Returns:
+            curve - Array of Gaussian curve values
+    '''
+    curve = np.zeros(len(x))
+    for i in range(0, len(amp)):
+        curve += u.gaussian(x = x, amp = amp[i], mu = mu[i], sigma = sigma[i])
+    return(curve)
 
 def fit(burst, mode, n, freq, tag, plot):
-    ''' In Development
+    '''
         Fits n components to data array and can plot fit and burst for comparison
         Inputs:
             burst - Data array to be fit
@@ -285,26 +324,11 @@ def comp_plot(data, name, fax, tag, labels, log):
 def main():
     new = start(filename = '11A_16sec.calib.4p')
     tag = '11A'
-    new1 = find_peak(data = new[1])
-    fit(burst = new1[1], mode = 'gaussian', n = 4, freq = new[2][new1[2]] , tag = '11A', plot = True)
-    '''
-    comp1 = []
-    comp2 = []
-    comp3 = []
-    comp4 = []
-    for i in range(0, len(new[1])):
-        new1 = fit(burst = new[1][i], mode = 'gaussian', freq = new[2][i], tag = tag, plot = False)
-        for j in range(0, len(new1[1])):
-            if 350 < new1[1][j] < 362:
-                x = burst_prop(burst = new[1][i][350:362])
-                comp1.append(x[1])
-            elif 363 < new1[1][j] < 370:
-                if np.sum(new[1][i][363:379]) == 0:
-                    pass
-
+    ManAmp = [[4000, 3500, 0, 0], [8000, 11000, 0, 0], [14000, 18000, 3000, 0], [15000, 25500, 5000, 0], [5500, 12000, 2500, 0]]
+    ManMu = [[358, 365.5, np.nan, np.nan], [359, 366, np.nan, np.nan], [360, 366, 382, np.nan], [360, 366, 382, np.nan], [360, 366.5, 385, np.nan]]
+    ManWidth = [[2, 2, 0, 0], [3, 1, 0, 0], [3, 1, 1, 0], [3, 1, 1, 0], [3, 1, 5, 0]]
     labels = ('Comp 1', 'Comp 2', 'Comp 3', 'Comp 4')
-    params = comp_param(data = new[1], mode = 'gaussian', n = 4, fax = new[2], tag = tag)
-    comp_plot(data = params[1], name = 'Center_Test', fax = new[2], tag = tag, labels = labels, log = False)
-    '''
+    params = comp_param(data = new[1], mode = 'gaussian', n = 4, mamp = ManAmp, mmu = ManMu, mwidth = ManWidth, fax = new[2], tag = tag)
+    comp_plot(data = params[2], name = 'Width', fax = new[2], tag = tag, labels = labels, log = False)
 
 main()
