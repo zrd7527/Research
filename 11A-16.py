@@ -149,13 +149,16 @@ def destroy_lower(data, index):
             data[i][j] = 0.0
     return(data)
 
-def comp_param(data, mode, n, mamp, mmu, mwidth, fax, tag):
+def comp_param(data, mode, n, llim, hlim, mind, mamp, mmu, mwidth, fax, tag):
     ''' In Development
         Finds parameters of data components
         Inputs:
             data - Array of data arrays
             mode - Desired type of fit, gaussian or vonmises
             n - number of components to be fit
+            llim - Array of lower bounds of components
+            hlim - Array of upper bounds of components
+            mind - Manually entered index range, first element is low index second is high limit
             mamp - Manually entered amplitudes for poor fits, array of arrays
             mmu - Manually entered centers for poor fits, array of arrays
             mwidth - Manually entered widths for poor fits, array of arrays
@@ -170,40 +173,40 @@ def comp_param(data, mode, n, mamp, mmu, mwidth, fax, tag):
     mus = [ [], [], [], [] ]
     widths = [ [], [], [], [] ]
     for i in range(0, len(data)):
-        if i in range(17, 22):
-            amps[0].append(mamp[i-17][0])
-            amps[1].append(mamp[i-17][1])
-            amps[2].append(mamp[i-17][2])
-            amps[3].append(mamp[i-17][3])
-            mus[0].append(mmu[i-17][0])
-            mus[1].append(mmu[i-17][1])
-            mus[2].append(mmu[i-17][2])
-            mus[3].append(mmu[i-17][3])
-            widths[0].append(mwidth[i-17][0])
-            widths[1].append(mwidth[i-17][1])
-            widths[2].append(mwidth[i-17][2])
-            widths[3].append(mwidth[i-17][3])
+        if i in range(mind[0], mind[1]):
+            amps[0].append(mamp[i-mind[0]][0])
+            amps[1].append(mamp[i-mind[0]][1])
+            amps[2].append(mamp[i-mind[0]][2])
+            amps[3].append(mamp[i-mind[0]][3])
+            mus[0].append(mmu[i-mind[0]][0])
+            mus[1].append(mmu[i-mind[0]][1])
+            mus[2].append(mmu[i-mind[0]][2])
+            mus[3].append(mmu[i-mind[0]][3])
+            widths[0].append(mwidth[i-mind[0]][0])
+            widths[1].append(mwidth[i-mind[0]][1])
+            widths[2].append(mwidth[i-mind[0]][2])
+            widths[3].append(mwidth[i-mind[0]][3])
         else:
             GetFit = fit(burst = data[i], mode = mode, n = n, freq = fax[i], tag = tag, plot = False)
             for j in range(0, len(GetFit[1])):
-                if 350 < GetFit[1][j] < 362:
-                    x = burst_prop(data[i][350:362])
+                if llim[0] < GetFit[1][j] < hlim[0]:
+                    x = burst_prop(data[i][llim[0]:llim[1]])
                     widths[0].append(x[1])
                     amps[0].append(GetFit[0][j])
                     mus[0].append(GetFit[1][j])
-                elif 363 < GetFit[1][j] < 370:
-                    if np.sum(data[i][363:379]) != 0:
-                        x = burst_prop(data[i][363:379])
+                elif llim[1] < GetFit[1][j] < hlim[1]:
+                    if np.sum(data[i][(hlim[0]+1):llim[2]]) != 0:
+                        x = burst_prop(data[i][(hlim[0]+1):llim[2]])
                         widths[1].append(x[1])
                     amps[1].append(GetFit[0][j])
                     mus[1].append(GetFit[1][j])
-                elif 380 < GetFit[1][j] < 390:
-                    x = burst_prop(data[i][371:394])
+                elif llim[2] < GetFit[1][j] < hlim[2]:
+                    x = burst_prop(data[i][(hlim[1]+1):llim[3]])
                     widths[2].append(x[1])
                     amps[2].append(GetFit[0][j])
                     mus[2].append(GetFit[1][j])
-                elif 395< GetFit[1][j] < 420:
-                    x = burst_prop(data[i][391:420])
+                elif llim[3] < GetFit[1][j] < hlim[3]:
+                    x = burst_prop(data[i][(hlim[2]+1):(hlim[3]+1)])
                     widths[3].append(x[1])
                     amps[3].append(GetFit[0][j])
                     mus[3].append(GetFit[1][j])
@@ -244,6 +247,7 @@ def manual_gaussians(x, amp, mu, sigma):
 def fit(burst, mode, n, freq, tag, plot):
     '''
         Fits n components to data array and can plot fit and burst for comparison
+        (Does not always fit properly due to significance test)
         Inputs:
             burst - Data array to be fit
             mode - Desired type of fit, can be gaussian or vonmises
@@ -323,12 +327,19 @@ def comp_plot(data, name, fax, tag, labels, log):
 
 def main():
     new = start(filename = '11A_16sec.calib.4p')
+    '''
     tag = '11A'
-    ManAmp = [[4000, 3500, 0, 0], [8000, 11000, 0, 0], [14000, 18000, 3000, 0], [15000, 25500, 5000, 0], [5500, 12000, 2500, 0]]
-    ManMu = [[358, 365.5, np.nan, np.nan], [359, 366, np.nan, np.nan], [360, 366, 382, np.nan], [360, 366, 382, np.nan], [360, 366.5, 385, np.nan]]
-    ManWidth = [[2, 2, 0, 0], [3, 1, 0, 0], [3, 1, 1, 0], [3, 1, 1, 0], [3, 1, 5, 0]]
+    LowLims = [350, 363, 380, 395]
+    HighLims = [362, 370, 390, 420]
+    MIndices = [17, 22]
+    MAmp = [[4000, 3500, 0, 0], [8000, 11000, 0, 0], [14000, 18000, 3000, 0], [15000, 25500, 5000, 0], [5500, 12000, 2500, 0]]
+    MMu = [[358, 365.5, np.nan, np.nan], [359, 366, np.nan, np.nan], [360, 366, 382, np.nan], [360, 366, 382, np.nan], [360, 366.5, 385, np.nan]]
+    MWidth = [[2, 2, 0, 0], [3, 1, 0, 0], [3, 1, 1, 0], [3, 1, 1, 0], [3, 1, 5, 0]]
     labels = ('Comp 1', 'Comp 2', 'Comp 3', 'Comp 4')
-    params = comp_param(data = new[1], mode = 'gaussian', n = 4, mamp = ManAmp, mmu = ManMu, mwidth = ManWidth, fax = new[2], tag = tag)
-    comp_plot(data = params[2], name = 'Width', fax = new[2], tag = tag, labels = labels, log = False)
+    params = comp_param(data = new[1], mode = 'gaussian', n = 4, llim = LowLims, hlim = HighLims, mind = MIndices, mamp = MAmp, mmu = MMu, mwidth = MWidth, fax = new[2], tag = tag)
+    comp_plot(data = params[2], name = 'Width_Test', fax = new[2], tag = tag, labels = labels, log = False)
+    '''
+    x = find_peak(data = new[1])
+    print(x[0])
 
 main()
