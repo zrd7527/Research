@@ -90,7 +90,7 @@ def mitigate(ar):
             rm - rfimitigator object
     '''
     rm = rfim.RFIMitigator(ar)
-    rm.zap_minmax()             #Auto-Zap Dead Channels
+    rm.zap_minmax()             # Auto-Zap Dead Channels
     return(rm)
 
 def zap_freq(rm, nulows, nuhighs):
@@ -103,7 +103,7 @@ def zap_freq(rm, nulows, nuhighs):
         Returns:
             rm - Modified rfimitigator object
     '''
-    if len(nulows) != len(nuhighs):     #Check for Valid Ranges
+    if len(nulows) != len(nuhighs):     # Check for Valid Ranges
         return()
     for i in range(0, len(nulows)):
         rm.zap_frequency_range(nulow = nulows[i], nuhigh = nuhighs[i])
@@ -167,15 +167,17 @@ def comp_param(data, mode, n, llim, hlim, mind, mamp, mmu, mwidth, fax, tag):
         Returns:
             amps - Array of amplitude arrays, organized into separate components
             mus - Array of center arrays, organized into separate components
-            widths - (not yet included) Array of width arrays, organized into separate components
+            widths - Array of width arrays, organized into separate components
+            fluence - Array of total fluence for each component
     '''
-    amps = [ [], [], [], [] ]
+    amps = [ [], [], [], [] ]                   # Initialize component arrays, can handle max 4 components
     mus = [ [], [], [], [] ]
     widths = [ [], [], [], [] ]
+    fluence = [0, 0, 0, 0]
     for i in range(0, len(data)):
-        if i in range(mind[0], mind[1]):
-            amps[0].append(mamp[i-mind[0]][0])
-            amps[1].append(mamp[i-mind[0]][1])
+        if i in range(mind[0], mind[1]):        # Manual fit parameters entered
+            amps[0].append(mamp[i-mind[0]][0])  # Append from manual arrays in order of index
+            amps[1].append(mamp[i-mind[0]][1])  # Manual arrays must have form [[comp1,comp2,comp3,comp4],...]
             amps[2].append(mamp[i-mind[0]][2])
             amps[3].append(mamp[i-mind[0]][3])
             mus[0].append(mmu[i-mind[0]][0])
@@ -187,30 +189,34 @@ def comp_param(data, mode, n, llim, hlim, mind, mamp, mmu, mwidth, fax, tag):
             widths[2].append(mwidth[i-mind[0]][2])
             widths[3].append(mwidth[i-mind[0]][3])
         else:
-            GetFit = fit(burst = data[i], mode = mode, n = n, freq = fax[i], tag = tag, plot = False)
+            GetFit = fit(burst = data[i], mode = mode, n = n, freq = fax[i], tag = tag, plot = False)   # Automatic fit routine
             for j in range(0, len(GetFit[1])):
-                if llim[0] < GetFit[1][j] < hlim[0]:
+                if llim[0] < GetFit[1][j] < hlim[0]:                    # Check if component center is within given limits
                     x = burst_prop(data[i][llim[0]:llim[1]])
                     widths[0].append(x[1])
                     amps[0].append(GetFit[0][j])
                     mus[0].append(GetFit[1][j])
+                    fluence[0] += np.sum(GetFit[2][llim[0]:hlim[0]])
                 elif llim[1] < GetFit[1][j] < hlim[1]:
-                    if np.sum(data[i][(hlim[0]+1):llim[2]]) != 0:
-                        x = burst_prop(data[i][(hlim[0]+1):llim[2]])
-                        widths[1].append(x[1])
+                    if np.sum(data[i][(hlim[0]+1):llim[2]]) != 0:       # Fixes bug for some sharp peaks
+                        x = burst_prop(data[i][(hlim[0]+1):llim[2]])    # Find FWHM using previous component high limit and next component low limit
+                        widths[1].append(x[1])                          # Giving extra noise around component provides more accurate FWHM
                     amps[1].append(GetFit[0][j])
                     mus[1].append(GetFit[1][j])
+                    fluence[1] += np.sum(GetFit[2][llim[1]:hlim[1]])
                 elif llim[2] < GetFit[1][j] < hlim[2]:
                     x = burst_prop(data[i][(hlim[1]+1):llim[3]])
                     widths[2].append(x[1])
                     amps[2].append(GetFit[0][j])
                     mus[2].append(GetFit[1][j])
+                    fluence[2] += np.sum(GetFit[2][llim[2]:hlim[2]])
                 elif llim[3] < GetFit[1][j] < hlim[3]:
                     x = burst_prop(data[i][(hlim[2]+1):(hlim[3]+1)])
                     widths[3].append(x[1])
                     amps[3].append(GetFit[0][j])
                     mus[3].append(GetFit[1][j])
-            if (len(mus[0]) - 1) < i:
+                    fluence[3] += np.sum(GetFit[2][llim[3]:hlim[3]])
+            if (len(mus[0]) - 1) < i:                   # For the case of no component found
                 mus[0].append(np.nan)
                 amps[0].append(0)
                 widths[0].append(0)
@@ -226,7 +232,7 @@ def comp_param(data, mode, n, llim, hlim, mind, mamp, mmu, mwidth, fax, tag):
                 mus[3].append(np.nan)
                 amps[3].append(0)
                 widths[3].append(0)
-    return(amps, mus, widths)
+    return(amps, mus, widths, fluence)
 
 def manual_gaussians(x, amp, mu, sigma):
     '''
@@ -246,7 +252,7 @@ def manual_gaussians(x, amp, mu, sigma):
 
 def fit(burst, mode, n, freq, tag, plot):
     '''
-        Fits n components to data array and can plot fit and burst for comparison
+        Fits n components to data array and can plot fit with burst for comparison
         (Does not always fit properly due to significance test)
         Inputs:
             burst - Data array to be fit
@@ -258,28 +264,29 @@ def fit(burst, mode, n, freq, tag, plot):
         Returns:
             amp - Array of component amplitudes
             mu - Array of component centers
+            retval - Gaussian curve array
     '''
     x = np.linspace(start=1, stop=512, num=512)
     amp = []
     mu = []
-    ForceFit = u.fit_components(xdata = x, ydata = burst, mode = mode,  N=n)
-    pfit = ForceFit[2]
+    ForceFit = u.fit_components(xdata = x, ydata = burst, mode = mode,  N=n)    # Forces a fit of n components
+    pfit = ForceFit[2]              # Fit parameters
     retval = np.zeros(len(x))
     for j in range(n):
-        retval += u.gaussian(x, pfit[3*j], pfit[3*j+1], pfit[3*j+2])
-        amp.append(pfit[3*j])
+        retval += u.gaussian(x, pfit[3*j], pfit[3*j+1], pfit[3*j+2])        # Add gaussian arrays together for plotting
+        amp.append(pfit[3*j])      # Append individual gaussian parameters for analysis 
         mu.append(pfit[3*j+1])
     if plot == True:
         plt.plot(x, retval, 'k')
         plt.plot(x, burst)
-        plt.xlim(340,430)          #Zoom in on data
+        plt.xlim(340,430)          # Zoom in on data
         plt.xlabel('Phase Bins')
         plt.ylabel('Flux Density')
         plt.title(tag + ' Peak Flux (at ' + str(round(freq)) + ' MHz)')
         plt.savefig(tag + '_Fit_Test')
-    return(amp, mu)
+    return(amp, mu, retval)
 
-def data_plot(data, fax, tag):
+def data_plot(data, fax, tag, param):
     ''' 
         Makes 3D data plot of entire data file, x is phase, y is frequency, z is flux density
         Inputs:
@@ -295,7 +302,8 @@ def data_plot(data, fax, tag):
     plt.title('Burst ' + tag + ', Dead Channels Removed')
     cbar = plt.colorbar()
     cbar.set_label('Flux Density')
-    plt.savefig(tag + '_Data')
+    plt.imshow(X = param, extent = [0,512,fax[0],fax[len(fax)-1]])
+    plt.savefig(tag + '_Data_Test')
     cbar.remove()
 
 def comp_plot(data, name, fax, tag, labels, log):
@@ -320,14 +328,13 @@ def comp_plot(data, name, fax, tag, labels, log):
         plt.xlabel('Log Frequency')
         plt.ylabel('Log ' + name)
     else:
-        plt.xlabel('Frequency')
+        plt.xlabel('Frequency(MHz)')
         plt.ylabel(name)
     plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
     plt.savefig(tag + '_' + name)
 
 def main():
     new = start(filename = '11A_16sec.calib.4p')
-    '''
     tag = '11A'
     LowLims = [350, 363, 380, 395]
     HighLims = [362, 370, 390, 420]
@@ -337,9 +344,10 @@ def main():
     MWidth = [[2, 2, 0, 0], [3, 1, 0, 0], [3, 1, 1, 0], [3, 1, 1, 0], [3, 1, 5, 0]]
     labels = ('Comp 1', 'Comp 2', 'Comp 3', 'Comp 4')
     params = comp_param(data = new[1], mode = 'gaussian', n = 4, llim = LowLims, hlim = HighLims, mind = MIndices, mamp = MAmp, mmu = MMu, mwidth = MWidth, fax = new[2], tag = tag)
-    comp_plot(data = params[2], name = 'Width_Test', fax = new[2], tag = tag, labels = labels, log = False)
-    '''
-    x = find_peak(data = new[1])
-    print(x[0])
+    #data_plot(data = new[1], fax = new[2], tag = tag, param = params[1])
+    #TotFluence = np.sum(params[3])/(1000*2892)
+    #for i in params[3]:
+        #print(i/(1000*2892))
+    #comp_plot(data = params[2], name = 'Width_Test', fax = new[2], tag = tag, labels = labels, log = False)
 
 main()
