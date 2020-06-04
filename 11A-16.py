@@ -191,13 +191,13 @@ def comp_param(data, mode, n, llim, hlim, mind, mamp, mmu, mwidth, fax, tag):
         else:
             GetFit = fit(burst = data[i], mode = mode, n = n, freq = fax[i], tag = tag, plot = False)   # Automatic fit routine
             for j in range(0, len(GetFit[1])):
-                if llim[0] < GetFit[1][j] < hlim[0]:                    # Check if component center is within given limits
+                if llim[0] < GetFit[1][j] < hlim[0] and i < 25:         # Check if component center is within given limits and eliminates noise at low frequencies 
                     x = burst_prop(data[i][llim[0]:llim[1]])
                     widths[0].append(x[1])
                     amps[0].append(GetFit[0][j])
                     mus[0].append(GetFit[1][j])
                     fluence[0] += np.sum(GetFit[2][llim[0]:hlim[0]])
-                elif llim[1] < GetFit[1][j] < hlim[1]:
+                elif llim[1] < GetFit[1][j] < hlim[1] and i < 56:       # Eliminates noise at indices of very low frequencies
                     if np.sum(data[i][(hlim[0]+1):llim[2]]) != 0:       # Fixes bug for some sharp peaks
                         x = burst_prop(data[i][(hlim[0]+1):llim[2]])    # Find FWHM using previous component high limit and next component low limit
                         widths[1].append(x[1])                          # Giving extra noise around component provides more accurate FWHM
@@ -210,7 +210,7 @@ def comp_param(data, mode, n, llim, hlim, mind, mamp, mmu, mwidth, fax, tag):
                     amps[2].append(GetFit[0][j])
                     mus[2].append(GetFit[1][j])
                     fluence[2] += np.sum(GetFit[2][llim[2]:hlim[2]])
-                elif llim[3] < GetFit[1][j] < hlim[3]:
+                elif llim[3] < GetFit[1][j] < hlim[3] and i > 23:       # Eliminates noise at indices of high frequency
                     x = burst_prop(data[i][(hlim[2]+1):(hlim[3]+1)])
                     widths[3].append(x[1])
                     amps[3].append(GetFit[0][j])
@@ -287,7 +287,7 @@ def fit(burst, mode, n, freq, tag, plot):
     return(amp, mu, retval)
 
 def data_plot(data, fax, tag, param):
-    ''' 
+    ''' Being Updated
         Makes 3D data plot of entire data file, x is phase, y is frequency, z is flux density
         Inputs:
             data - Array of data arrays
@@ -348,6 +348,6 @@ def main():
     #TotFluence = np.sum(params[3])/(1000*2892)
     #for i in params[3]:
         #print(i/(1000*2892))
-    #comp_plot(data = params[2], name = 'Width_Test', fax = new[2], tag = tag, labels = labels, log = False)
+    #comp_plot(data = params[2], name = 'Width', fax = new[2], tag = tag, labels = labels, log = False)
 
 main()
