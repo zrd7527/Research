@@ -149,58 +149,56 @@ def destroy_lower(data, index):
             data[i][j] = 0.0
     return(data)
 
-def comp_param(data, mode, n, llim, hlim, fax, tag):
+def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, fax, tag):
     ''' 
         Finds parameters of data components
         Inputs:
             data - Array of data arrays
             mode - Desired type of fit, gaussian or vonmises
             n - number of components to be fit
-            llim - Array of lower bounds of components
-            hlim - Array of upper bounds of components
+            pllim - Array of lower phase bounds of components
+            phlim - Array of upper phase bounds of components
+            fllim - Array of lower frequency bounds of components
+            fhlim - Array of upper frequency bounds of components
             fax - Frequency axis array
             tag - Burst name, e.g. 11A
         Returns:
-            amps - Array of amplitude arrays, organized into separate components
-            mus - Array of center arrays, organized into separate components
-            widths - Array of width arrays, organized into separate components
-            fluence - Array of total fluence for each component
+            amps - Array of amplitudes for each component
+            mus - Array of centers for each component
+            widths - Array of widths for each component
+            fluence - Array of fluences for each component
     '''
     amps = [ [], [], [], [] ]                   # Initialize component arrays, can handle max 4 components
     mus = [ [], [], [], [] ]
     widths = [ [], [], [], [] ]
     fluence = [[], [], [], []]
     for i in range(0, len(data)):
-        GetFit = fit(burst = data[i], mode = mode, n = n, llimit = llim[0], hlimit = hlim[n-1], freq = fax[i], tag = tag, plot = False)   # Automatic fit routine
+        GetFit = fit(burst = data[i], mode = mode, n = n, llimit = pllim[0], hlimit = phlim[n-1], freq = fax[i], tag = tag, plot = False)   # Automatic fit routine
         for j in range(0, len(GetFit[1])):
-            if llim[0] < GetFit[1][j] < hlim[0] and (len(mus[0]) - 1) < i and 8 < i < 25:         # Check if component center is within given limits and eliminates noise at low frequencies
-                #if np.sum(data[i][llim[0]:llim[1]]) != 0:
-                    #x = burst_prop(data[i][llim[0]:llim[1]])
-                    #widths[0].append(x[1])
+            if pllim[0] < GetFit[1][j] < phlim[0] and (len(mus[0]) - 1) < i and fllim[0] < i < fhlim[0]:         # Check if component center is within given phase limits and frequency limits
+                x = burst_prop(data[i][(pllim[0]-4):pllim[1]])
+                widths[0].append(x[1])
                 amps[0].append(GetFit[0][j])
                 mus[0].append(GetFit[1][j])
-                fluence[0].append((np.sum(GetFit[2][llim[0]:hlim[0]]))/(1000*2892))     # Conversion from flux density and phase bin units to Jy*ms
-            elif llim[1] < GetFit[1][j] < hlim[1] and (len(mus[1]) - 1) < i and 10 < i < 35:       # Eliminates noise at indices of very low frequencies
-                #if np.sum(data[i][(hlim[0]+1):llim[2]]) != 0:       # Fixes bug for some sharp peaks
-                    #x = burst_prop(data[i][(hlim[0]+1):llim[2]])    # Find FWHM using previous component high limit and next component low limit
-                    #widths[1].append(x[1])                          # Giving extra noise around component provides more accurate FWHM
+                fluence[0].append(np.sum(GetFit[2][0:(phlim[0]-pllim[0])])/(1000*2892))     # Sum area under fit curve then convert from flux density and phase bin units to Jy*ms
+            elif pllim[1] < GetFit[1][j] < phlim[1] and (len(mus[1]) - 1) < i and fllim[1] < i < fhlim[1]:
+                x = burst_prop(data[i][(phlim[0]+1):pllim[2]])    # Find FWHM using previous component high limit and next component low limit\
+                widths[1].append(x[1])                          # Giving extra noise around component provides more accurate FWHM
                 amps[1].append(GetFit[0][j])
                 mus[1].append(GetFit[1][j])
-                fluence[1].append((np.sum(GetFit[2][llim[1]:hlim[1]]))/(1000*2892))
-            elif llim[2] < GetFit[1][j] < hlim[2] and (len(mus[2]) - 1) < i and 17 < i < 47:
-                #if np.sum(data[i][(hlim[1]+1):llim[3]]) != 0:
-                    #x = burst_prop(data[i][(hlim[1]+1):llim[3]])
-                    #widths[2].append(x[1])
+                fluence[1].append(np.sum(GetFit[2][(pllim[1]-pllim[0]):(phlim[1]-pllim[0])])/(1000*2892))
+            elif pllim[2] < GetFit[1][j] < phlim[2] and (len(mus[2]) - 1) < i and fllim[2] < i < fhlim[2]:
+                x = burst_prop(data[i][(phlim[1]+1):pllim[3]])
+                widths[2].append(x[1])
                 amps[2].append(GetFit[0][j])
                 mus[2].append(GetFit[1][j])
-                fluence[2].append((np.sum(GetFit[2][llim[2]:hlim[2]]))/(1000*2892))
-            elif llim[3] < GetFit[1][j] < hlim[3] and (len(mus[3]) - 1) < i and 32 < i < 54:       # Eliminates noise at indices of high frequency
-                #if np.sum(data[i][(hlim[2]+1):(hlim[3]+1)]) != 0:
-                    #x = burst_prop(data[i][(hlim[2]+1):(hlim[3]+1)])
-                    #widths[3].append(x[1])
+                fluence[2].append(np.sum(GetFit[2][(pllim[2]-pllim[0]):(phlim[2]-pllim[0])])/(1000*2892))
+            elif pllim[3] < GetFit[1][j] < phlim[3] and (len(mus[3]) - 1) < i and fllim[3] < i < fhlim[3]:
+                x = burst_prop(data[i][(phlim[2]+1):(phlim[3]+1)])
+                widths[3].append(x[1])
                 amps[3].append(GetFit[0][j])
                 mus[3].append(GetFit[1][j])
-                fluence[3].append((np.sum(GetFit[2][llim[3]:hlim[3]]))/(1000*2892))
+                fluence[3].append(np.sum(GetFit[2][(pllim[3]-pllim[0]):(phlim[3]-pllim[0])])/(1000*2892))
         if (len(mus[0]) - 1) < i:                   # For the case of no component found
             mus[0].append(np.nan)
             amps[0].append(0)
@@ -243,7 +241,7 @@ def manual_gaussians(x, amp, mu, sigma):
 def fit(burst, mode, n, llimit, hlimit, freq, tag, plot):
     '''
         Fits n components to data array and can plot fit with burst for comparison
-        (Does not always fit properly due to significance test)
+        Only fits properly when given a small phase range around burst
         Inputs:
             burst - Data array to be fit
             mode - Desired type of fit, can be gaussian or vonmises
@@ -302,13 +300,14 @@ def data_plot(data, fax, tag, center):
         plt.savefig(tag + '_Data')
     cbar.remove()
 
-def comp_plot(data, name, fax, tag, labels, log):
+def comp_plot(data, name, fax, units, tag, labels, log):
     ''' 
         Makes 2D plot of component parameters vs frequency
         Inputs:
             data - Array of component parameters
             name - Name of parameter to be plotted, e.g. Amplitude
             fax - Frequency axis array
+            units - String, y axis units
             tag - Burst name, e.g. 11A
             labels - Component name list for legend
             log - Boolean, true for log plot
@@ -325,17 +324,19 @@ def comp_plot(data, name, fax, tag, labels, log):
         plt.ylabel('Log ' + name)
     else:
         plt.xlabel('Frequency(MHz)')
-        plt.ylabel((name) + '(Jy ms)')      # Create unit variable
+        plt.ylabel(name + '(' + units + ')')
     plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
     plt.savefig(tag + '_' + name)
 
 def main():
     new = start(filename = '11A_16sec.calib.4p')
     tag = '11A'
-    LowLims = [350, 363, 380, 395]
-    HighLims = [362, 370, 390, 420]
+    PhaseLowLims = [350, 363, 380, 395]
+    PhaseHighLims = [362, 370, 390, 420]
+    FreqLowLims = [8, 10, 17, 32]
+    FreqHighLims = [25, 35, 47, 54]
     labels = ('Comp 1', 'Comp 2', 'Comp 3', 'Comp 4')
-    params = comp_param(data = new[1], mode = 'gaussian', n = 4, llim = LowLims, hlim = HighLims, fax = new[2], tag = tag)
-    comp_plot(data = params[3], name = 'Fluence', fax = new[2], tag = tag, labels = labels, log = False)
+    params = comp_param(data = new[1], mode = 'gaussian', n = 4, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = new[2], tag = tag)
+    comp_plot(data = params[3], name = 'Fluence', fax = new[2], units = 'Jy ms', tag = tag, labels = labels, log = False)
 
 main()
