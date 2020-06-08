@@ -17,9 +17,6 @@ def start(filename):
     ar = p.Archive(filename)
     ar.dedisperse(reverse = True)
     rm = mitigate(ar)
-    nulows = [7800]
-    nuhighs = [8400]
-    zap_freq(rm, nulows = nulows, nuhighs = nuhighs)
     ar.bscrunch(nbins = 2048, factor = 4)       # Average Burst in Phase
     ar.fscrunch(nchan = 19456, factor = 304)    # Average Burst in Frequency
     data = ar.getData()
@@ -322,21 +319,35 @@ def comp_plot(data, name, fax, units, tag, labels, log):
         plt.xscale('log')
         plt.xlabel('Log Frequency')
         plt.ylabel('Log ' + name)
+        plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
+        plt.savefig(tag + '_Log_' + name)
     else:
         plt.xlabel('Frequency(MHz)')
         plt.ylabel(name + '(' + units + ')')
-    plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
-    plt.savefig(tag + '_' + name)
+        plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
+        plt.savefig(tag + '_' + name)
 
-def main():
+def burst_11A_prop():
     new = start(filename = '11A_16sec.calib.4p')
     tag = '11A'
     PhaseLowLims = [350, 363, 380, 395]
     PhaseHighLims = [362, 370, 390, 420]
-    FreqLowLims = [8, 10, 17, 32]
-    FreqHighLims = [25, 35, 47, 54]
+    FreqLowLims = [11, 10, 17, 33]
+    FreqHighLims = [26, 35, 47, 52]
     labels = ('Comp 1', 'Comp 2', 'Comp 3', 'Comp 4')
     params = comp_param(data = new[1], mode = 'gaussian', n = 4, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = new[2], tag = tag)
-    comp_plot(data = params[3], name = 'Fluence', fax = new[2], units = 'Jy ms', tag = tag, labels = labels, log = False)
+    return(params)
+
+def main():
+    new = start(filename = '11D_323sec.calib.4p')
+    newav = freq_av(data = new[1][11:35])
+    plt.plot(newav)
+    plt.xlim(0, 50)
+    plt.xlabel('Phase Bins')
+    plt.ylabel('Flux Density')
+    plt.title('Burst 11D Averaged in Frequency')
+    plt.savefig('11D_FreqAv')
+    #fit(burst = np.log(params[3][0]), mode = 'gaussian', n = 1, llimit = 0, hlimit = len(params[3][0]), freq = 6000, tag = tag, plot = True)
+    #comp_plot(data = params[3], name = 'Fluence', fax = new[2], units = 'Jy ms', tag = tag, labels = labels, log = True)
 
 main()
