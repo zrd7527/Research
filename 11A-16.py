@@ -328,26 +328,48 @@ def comp_plot(data, name, fax, units, tag, labels, log):
         plt.savefig(tag + '_' + name)
 
 def burst_11A_prop():
+    '''
+        Inputs:
+            nothing
+        Returns:
+            params - Array of component parameters for burst 11A
+    '''
     new = start(filename = '11A_16sec.calib.4p')
     tag = '11A'
     PhaseLowLims = [350, 363, 380, 395]
     PhaseHighLims = [362, 370, 390, 420]
     FreqLowLims = [11, 10, 17, 33]
     FreqHighLims = [26, 35, 47, 52]
-    labels = ('Comp 1', 'Comp 2', 'Comp 3', 'Comp 4')
     params = comp_param(data = new[1], mode = 'gaussian', n = 4, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = new[2], tag = tag)
     return(params)
 
 def main():
-    new = start(filename = '11D_323sec.calib.4p')
-    newav = freq_av(data = new[1][11:35])
+    new = start(filename = '12B_743sec.calib.4p')
+    tag = '12B'
+    PhaseLowLims = [93, 125, 160, 0]
+    PhaseHighLims = [113, 150, 0, 0]
+    FreqLowLims = [ 11, 28, 0, 0]
+    FreqHighLims = [25, 45, 0, 0]
+    params = comp_param(data = new[1], mode = 'gaussian', n = 2, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = new[2], tag = tag)
+    offset = [[], []]
+    for i in params[1][0]:
+        real = i-32
+        offset[0].append(real)
+    for i in params[1][1]:
+        real = i-45
+        offset[1].append(real)
+    '''
+    newav = freq_av(data = new[1][10:45])
     plt.plot(newav)
-    plt.xlim(0, 50)
+    plt.xlim(50, 200)
     plt.xlabel('Phase Bins')
     plt.ylabel('Flux Density')
-    plt.title('Burst 11D Averaged in Frequency')
-    plt.savefig('11D_FreqAv')
-    #fit(burst = np.log(params[3][0]), mode = 'gaussian', n = 1, llimit = 0, hlimit = len(params[3][0]), freq = 6000, tag = tag, plot = True)
-    #comp_plot(data = params[3], name = 'Fluence', fax = new[2], units = 'Jy ms', tag = tag, labels = labels, log = True)
+    plt.title('Burst 12B Averaged in Frequency')
+    plt.savefig('12B_FreqAv')
+    '''
+    #fit(burst = new[1][40], mode = 'gaussian', n = 1, llimit = 0, hlimit = 200, freq = new[2][40], tag = tag, plot = True)
+    labels = ('Comp 1', 'Comp 2')#, 'Comp 3', 'Comp 4')
+    #data_plot(data = new[1], fax = new[2], tag = tag, center = offset)
+    #comp_plot(data = params[3][0:2], name = 'Fluence', fax = new[2], units = 'Jy ms', tag = tag, labels = labels, log = False)
 
 main()
