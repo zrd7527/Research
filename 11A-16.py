@@ -1,6 +1,7 @@
 import pypulse as p
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy as sci
 import pypulse.utils as u
 import pypulse.rfimitigator as rfim
 
@@ -168,7 +169,7 @@ def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, fax, tag):
     amps = [ [], [], [], [] ]                   # Initialize component arrays, can handle max 4 components
     mus = [ [], [], [], [] ]
     widths = [ [], [], [], [] ]
-    fluence = [[], [], [], []]
+    fluence = [ [], [], [], [] ]
     for i in range(0, len(data)):
         GetFit = fit(burst = data[i], mode = mode, n = n, llimit = pllim[0], hlimit = phlim[n-1], freq = fax[i], tag = tag, plot = False)   # Automatic fit routine
         for j in range(0, len(GetFit[1])):
@@ -279,7 +280,7 @@ def data_plot(data, fax, tag, center):
             data - Array of data arrays
             fax - Frequency axis array
             tag - Burst name, e.g. 11A
-            center - Array of component centers from comp_param()
+            center - Array of component centers from comp_param(), input empty array if no center
         Returns:
             nothing
     '''
@@ -329,6 +330,7 @@ def comp_plot(data, name, fax, units, tag, labels, log):
 
 def burst_11A_prop():
     '''
+        Uses manually determined frequency and phase ranges to output burst 11A component parameters
         Inputs:
             nothing
         Returns:
@@ -343,10 +345,18 @@ def burst_11A_prop():
     params = comp_param(data = new[1], mode = 'gaussian', n = 4, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = new[2], tag = tag)
     return(params)
 
-def main():
+def burst_12B_prop():
+    '''
+        Uses manually determined frequency and phase ranges to output burst 12B component parameters
+        Inputs:
+            nothing
+        Returns:
+            params - Array of component parameters for burst 12B
+            offset - Center of components array with offset removed
+    '''
     new = start(filename = '12B_743sec.calib.4p')
     tag = '12B'
-    PhaseLowLims = [93, 125, 160, 0]
+    PhaseLowLims = [93, 125, 160, 0]            # Must include a third lower limit for width calculation
     PhaseHighLims = [113, 150, 0, 0]
     FreqLowLims = [ 11, 28, 0, 0]
     FreqHighLims = [25, 45, 0, 0]
@@ -358,6 +368,16 @@ def main():
     for i in params[1][1]:
         real = i-45
         offset[1].append(real)
+    return(params, offset)
+
+def main():
+    x = np.linspace(0, 64, 64)
+    lnorm = sci.stats.lognorm.pdf(x, s=0.25)
+    plt.plot(lnorm)
+    plt.savefig('TEST')
+    #params = burst_11A_prop()
+    #for i in params[3]:
+        #plt.plot(i)
     '''
     newav = freq_av(data = new[1][10:45])
     plt.plot(newav)
@@ -367,8 +387,8 @@ def main():
     plt.title('Burst 12B Averaged in Frequency')
     plt.savefig('12B_FreqAv')
     '''
-    #fit(burst = new[1][40], mode = 'gaussian', n = 1, llimit = 0, hlimit = 200, freq = new[2][40], tag = tag, plot = True)
-    labels = ('Comp 1', 'Comp 2')#, 'Comp 3', 'Comp 4')
+    #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
+    #labels = ('Comp 1', 'Comp 2', 'Comp 3', 'Comp 4')
     #data_plot(data = new[1], fax = new[2], tag = tag, center = offset)
     #comp_plot(data = params[3][0:2], name = 'Fluence', fax = new[2], units = 'Jy ms', tag = tag, labels = labels, log = False)
 
