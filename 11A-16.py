@@ -197,7 +197,7 @@ def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, fax, tag):
                 widths[1].append(x[1])                          # Giving extra noise around component provides more accurate FWHM
                 amps[1].append(GetFit[0][j])
                 mus[1].append(GetFit[1][j])
-                fluence[1].append(np.sum(GetFit[2][(pllim[1]-pllim[0]):(phlim[1]-pllim[0])])/(1000*2892))   # All index ranges of fluence calculation offset by pllin[0] becasue that is where the fit starts
+                fluence[1].append(np.sum(GetFit[2][(pllim[1]-pllim[0]):(phlim[1]-pllim[0])])/(1000*2892))   # All index ranges of fluence calculation offset by pllim[0] becasue that is where the fit starts
             elif pllim[2] < GetFit[1][j] < phlim[2] and (len(mus[2]) - 1) < i and fllim[2] < i < fhlim[2]:
                 x = burst_prop(data[i][(phlim[1]+1):pllim[3]])
                 widths[2].append(x[1])
@@ -258,15 +258,9 @@ def lognorm(x, amp, mu, sigma):
             mu - Center of distribution
             sigma - Standard deviation of distribution
         Returns:
-            array of log-normal curve values
+            Array of log-normal curve values
     '''
-    center = []
-    for i in range(0, len(x)):
-        if x[i]-mu == 0:
-            center.append(10e-10)
-        else:
-            center.append(np.log(x[i]-mu))
-    return amp*np.exp(-0.5*(center/sigma)**2)
+    return amp*np.exp(-0.5*((np.log(x)-mu)/sigma)**2)
 
 def fit(burst, mode, n, llimit, hlimit, freq, tag, plot):
     '''
@@ -305,30 +299,26 @@ def fit(burst, mode, n, llimit, hlimit, freq, tag, plot):
         plt.savefig(tag + '_Fit_Test')
     return(amp, mu, retval)
 
-def lnorm_fit(yin, n, xlow, xhigh):
-    xran = np.linspace(start = xlow, stop = xhigh, num = (xhigh-xlow))
-    nbins = len(xran)
-    peakind = np.argmax(yin)
-    init = np.array([yin[peakind], xran[peakind], nbins])
-    for k in range(1, n+1):
-        def findfit(p, x):
+def lnorm_fit(xin, burst, n):
+    bins = len(xin)
+    maxind = np.argmax(burst)
+    init = np.array([burst[maxind], np.log(xin[maxind]), 5])
+    for i in range(1,n+1):
+        def fitter(x, p):
             pdf = np.zeros(len(x))
-            for i in range(k):
-                if p[3*i] <= 0:
-                    return 1e12
-                pdf += u.gaussian(x, p[3*i], p[3*i+1], p[3*i+2])
-            return pdf
+            for j in range(i):
+                pdf += lognorm(x, p[3*j], p[3*j+1], p[3*j+2])
+            return(pdf)
         def err(p, x, y):
-            return y - findfit(p, x)
-        res = sci.optimize.leastsq(err, init, args = (xran, yin), full_output = True)
-        if k == n:
+            return y - fitter(x, p)
+        res = sci.optimize.leastsq(func = err, x0 = init, args = (xin, burst))
+        if i == n:
             break
         pfit = res[0]
-        resid = yin - findfit(pfit, xran)
-        peakind = np.argmax(resid)
-        newinit = np.array([resid[peakind], xran[peakind], nbins])
+        result = burst - fitter(xin, pfit)
+        newinit = np.array([result[maxind], np.log(xin[maxind]), 5])
         init = np.concatenate((pfit, newinit))
-    return res[0]
+    return(res[0])
 
 def data_plot(data, fax, tag, center):
     ''' 
@@ -424,17 +414,19 @@ def burst_12B_prop():
     return(params, fax)
 
 def main():
-    x = np.linspace(0, 64, 64)
+    x = np.linspace(1, 64, 63)
     props = burst_11A_prop()
     params = props[0]
     fax = props[1]
-    fluence1 = params[3][1]
-    pfit = lnorm_fit(yin = fluence1, n = 1, xlow = 0, xhigh = 64)
-    #pdf = np.zeros(len(x))
-    #pdf += lognorm(x, pfit[0], pfit[1], pfit[2])
-    lnorm = pfit[0]*(sci.stats.lognorm.pdf(x = x, s = pfit[2], loc = pfit[1], scale = 0.5))
-    plt.plot(fax, fluence1)
-    plt.plot(fax, lnorm)
+    n = 1
+    for k in range(0, len(params[3])):
+        fluencei = params[3][k][1:]
+        pfit = lnorm_fit(xin = x, burst = fluencei, n = n)
+        pdf = np.zeros(len(x))
+        for i in range(n):
+            pdf += lognorm(x, pfit[3*i], pfit[3*i+1], pfit[3*i+2])
+        plt.plot(fax[1:], fluencei)
+        plt.plot(fax[1:], pdf)
     plt.xlabel('Phase Bins')
     plt.ylabel('Fluence(Jy ms)')
     plt.title('Log-Normal Fit to Burst 11A Fluence')
