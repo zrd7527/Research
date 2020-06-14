@@ -299,26 +299,78 @@ def fit(burst, mode, n, llimit, hlimit, freq, tag, plot):
         plt.savefig(tag + '_Fit_Test')
     return(amp, mu, retval)
 
-def lnorm_fit(xin, burst, n):
+def lnorm_fit(xin, burst, n, plot, dattype, units, fax, comp):
+    '''
+        Fit a Log-Normal curve to a data array and can plot
+        Inputs:
+            xin - Array of frequency range to be fit
+            burst - Data array to be fit
+            n - Integer number of curve fits desired, fit is better with greater n
+            plot - Boolean, true to make plot with data and fit
+            dattype - Type of data being plotted, string used for y axis label and title
+            units - Unit of data type, string used for y axis label
+            fax - Frequency axis of data array
+            comp - Component label, for title and saving. Must be string of form: Component #
+        Returns:
+            res[0] - Resulting amplitude, mean, and standard dev of fit, to be used in lognormal plot
+    '''
     bins = len(xin)
     maxind = np.argmax(burst)
-    init = np.array([burst[maxind], np.log(xin[maxind]), 5])
+    init = np.array([burst[maxind], np.log(xin[maxind]), 2])        # Initial Guess for fit uses the max amplitude indices and a sigma of 2
     for i in range(1,n+1):
-        def fitter(x, p):
+        def fitter(x, p):               # Fit Function for lognorm, this goes into leastsq
             pdf = np.zeros(len(x))
             for j in range(i):
                 pdf += lognorm(x, p[3*j], p[3*j+1], p[3*j+2])
             return(pdf)
-        def err(p, x, y):
+        def err(p, x, y):               # Error Function, this is used in leastsq to iteratively fit a number of components until the smallest sum of squares is found
             return y - fitter(x, p)
-        res = sci.optimize.leastsq(func = err, x0 = init, args = (xin, burst))
+        res = sci.optimize.leastsq(func = err, x0 = init, args = (xin, burst))      # Finds The smallest sum of squares for fit and data
         if i == n:
             break
         pfit = res[0]
         result = burst - fitter(xin, pfit)
-        newinit = np.array([result[maxind], np.log(xin[maxind]), 5])
+        newinit = np.array([result[maxind], np.log(xin[maxind]), 2])            # Redefine initial conditions for next component
         init = np.concatenate((pfit, newinit))
+    if plot == True:
+        pdf = np.zeros(len(xin))
+        for i in range(n):
+         pdf += lognorm(x = xin, amp = res[0][3*i], mu = res[0][3*i+1], sigma = res[0][3*i+2])  # Add up all components to get total fit
+        plt.plot(fax[1:], burst)
+        plt.plot(fax[1:], pdf)
+        plt.legend(labels = (dattype, 'Log-Normal Fit'))
+        plt.xlabel('Frequency(MHz)')
+        plt.ylabel(dattype + units)
+        plt.title('Log-Normal fit to ' + dattype + ' of ' + comp)
+        plt.savefig(comp[0:4] + comp[-1] + '_LNorm_Fit')
     return(res[0])
+
+def gauss_lnorm_fit(xin, burst, dattype, units, fax, comp):
+    '''
+        Fit a single gaussian plus a log-normal curve to the data array and makes plot, for very sharply peaked data
+        Inputs:
+            xin - Array of frequency range to be fit
+            burst - Data array to be fit
+            dattype - Type of data being plotted, string used for y axis label and title
+            units - Unit of data type, string used for y axis label
+            fax - Frequency axis of data array
+            comp - Component label, for title and saving. Must be string of form: Component #
+        Returns:
+            nothing
+    '''
+    gauss = fit(burst = burst, mode = 'gaussian', n = 1, llimit = 0, hlimit = 64, freq = 0, tag = '', plot = False)     # Get gaussian fit of data
+    resid = burst - gauss[2]            # Find residual of data minus gaussian fit
+    pfit = lnorm_fit(xin = xin, burst = resid[1:], n = 1, plot = False, dattype = dattype, units = units, fax = fax, comp = comp)   # Get log-normal fit parameters of residual
+    pdf = np.zeros(len(xin))
+    pdf += lognorm(x = xin, amp = pfit[0], mu = pfit[1], sigma = pfit[2])   # Make log-normal curve
+    FullFit = gauss[2][1:] + pdf        # Add gaussian and log-normal curve to get combined fit curve
+    plt.plot(fax[1:], burst[1:])
+    plt.plot(fax[1:], FullFit)
+    plt.legend(labels = (comp, 'Gauss+LogNormal Fit'))
+    plt.xlabel('Frequency(MHz)')
+    plt.ylabel(dattype + units)
+    plt.title('Gauss Plus LogNormal fit to ' + dattype + ' of ' + comp)
+    plt.savefig(comp[0:4] + comp[-1] + '_GaLNorm_Fit')
 
 def data_plot(data, fax, tag, center):
     ''' 
@@ -419,19 +471,9 @@ def main():
     params = props[0]
     fax = props[1]
     n = 1
-    for k in range(0, len(params[3])):
-        fluencei = params[3][k][1:]
-        pfit = lnorm_fit(xin = x, burst = fluencei, n = n)
-        pdf = np.zeros(len(x))
-        for i in range(n):
-            pdf += lognorm(x, pfit[3*i], pfit[3*i+1], pfit[3*i+2])
-        plt.plot(fax[1:], fluencei)
-        plt.plot(fax[1:], pdf)
-    plt.xlabel('Phase Bins')
-    plt.ylabel('Fluence(Jy ms)')
-    plt.title('Log-Normal Fit to Burst 11A Fluence')
-    plt.savefig('11A_Fluence_Fit')
-    
+    fluence = params[3][1]
+    #lnorm_fit(xin = x, burst = fluence[1:], n = n, plot = True, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
+    gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
     #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
     #labels = ('Comp 1', 'Comp 2', 'Comp 3', 'Comp 4')
     #data_plot(data = props[1], fax = props[2], tag = tag, center = props[0][1])
