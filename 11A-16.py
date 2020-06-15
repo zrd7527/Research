@@ -434,17 +434,19 @@ def burst_11A_prop():
             nothing
         Returns:
             params - Array of component parameters for burst 11A
+            data - Full data of burst after noise reduction, array of frequency data arrays
             fax - Frequency axis array
     '''
     new = start(filename = '11A_16sec.calib.4p')
+    data = new[1]
     tag = '11A'
     fax = new[2]
     PhaseLowLims = [350, 363, 380, 395]
     PhaseHighLims = [362, 370, 390, 420]
     FreqLowLims = [11, 10, 17, 33]
     FreqHighLims = [26, 35, 47, 52]
-    params = comp_param(data = new[1], mode = 'gaussian', n = 4, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = new[2], tag = tag)
-    return(params, fax)
+    params = comp_param(data = data, mode = 'gaussian', n = 4, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = fax, tag = tag)
+    return(params, data, fax)
 
 def burst_12B_prop():
     '''
@@ -453,30 +455,97 @@ def burst_12B_prop():
             nothing
         Returns:
             params - Array of component parameters for burst 12B
+            data - Full data of burst after noise reduction, array of frequency data arrays
             fax - Frequncy axis array
     '''
     new = start(filename = '12B_743sec.calib.4p')
+    data = new[1]
     tag = '12B'
     fax = new[2]
     PhaseLowLims = [65, 85, 115, 0]            # Must include a third lower limit for width calculation
     PhaseHighLims = [75, 105, 0, 0]
     FreqLowLims = [ 11, 28, 0, 0]
     FreqHighLims = [25, 45, 0, 0]
-    params = comp_param(data = new[1], mode = 'gaussian', n = 2, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = new[2], tag = tag)
-    return(params, fax)
+    params = comp_param(data = data, mode = 'gaussian', n = 2, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = fax, tag = tag)
+    return(params, data, fax)
+
+def single_comp_prop(tag):
+    '''
+        Returns burst parameters of single component bursts using the manually determined frequency and phase ranges
+        Inputs:
+            tag - Burst name of desired burst parameters, e.g. 11B
+        Returns:
+            params - Array of component parameters for desired single component burst
+            data - Full data of burst after noise reduction, array of frequency data arrays
+            fax - Frequency axis array
+    '''
+    if tag == '11B':
+        new = start(filename = '11B_263sec.calib.4p')
+        PhaseLowLims = [72, 90, 0, 0]
+        PhaseHighLims = [84, 0, 0, 0]
+        FreqLowLims = [37, 0, 0, 0]
+        FreqHighLims = [48, 0, 0, 0]
+    elif tag == '11C':
+        new = start(filename = '11C_284sec.calib.4p')
+        PhaseLowLims = [125, 145, 0, 0]
+        PhaseHighLims = [140, 0, 0, 0]
+        FreqLowLims = [10, 0, 0, 0]
+        FreqHighLims = [21, 0, 0, 0]
+    elif tag == '11D':
+        new = start(filename = '11D_323sec.calib.4p')
+        PhaseLowLims = [5, 40, 0, 0]
+        PhaseHighLims = [35, 0, 0, 0]
+        FreqLowLims = [11, 0, 0, 0]
+        FreqHighLims = [35, 0, 0, 0]
+    elif tag == '11F':
+        new = start(filename = '11F_356sec.calib.4p')
+        PhaseLowLims = [455, 500, 0, 0]
+        PhaseHighLims = [490, 0, 0, 0]
+        FreqLowLims = [10, 0, 0, 0]
+        FreqHighLims = [22, 0, 0, 0]
+    elif tag == '11G':
+        new = start(filename = '11G_580sec.calib.4p')
+        PhaseLowLims = [290, 310, 0, 0]
+        PhaseHighLims = [305, 0, 0, 0]
+        FreqLowLims = [40, 0, 0, 0]
+        FreqHighLims = [48, 0, 0, 0]
+    elif tag == '11H':
+        new = start(filename = '11H_597sec.calib.4p')
+        PhaseLowLims = [12, 37, 0, 0]
+        PhaseHighLims = [32, 0, 0, 0]
+        FreqLowLims = [0, 0, 0, 0]
+        FreqHighLims = [23, 0, 0, 0]
+    elif tag == '11I':
+        new = start(filename = '11I_691sec.calib.4p')
+        PhaseLowLims = [138, 165, 0, 0]
+        PhaseHighLims = [160, 0, 0, 0]
+        FreqLowLims = [32, 0, 0, 0]
+        FreqHighLims = [56, 0, 0, 0]
+    else:
+        raise NameError('Tag Not Found')
+    data = new[1]
+    fax = new[2]
+    params = comp_param(data = data, mode = 'gaussian', n = 1, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = fax, tag = tag)
+    return(params, data, fax)
 
 def main():
+    tag = '11I'
+    props = single_comp_prop(tag = tag)
+    params = props[0]
+    #print(np.sum(params[3][0]))
+    '''
     x = np.linspace(1, 64, 63)
     props = burst_11A_prop()
     params = props[0]
     fax = props[1]
     n = 1
-    fluence = params[3][1]
-    #lnorm_fit(xin = x, burst = fluence[1:], n = n, plot = True, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
-    gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
+    fluence = params[3][2]
+    lnorm_fit(xin = x, burst = fluence[1:], n = n, plot = True, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 3')
+    '''
+    #gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
     #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
-    #labels = ('Comp 1', 'Comp 2', 'Comp 3', 'Comp 4')
+    labels = ('Comp 1')#, 'Comp 2', 'Comp 3', 'Comp 4')
     #data_plot(data = props[1], fax = props[2], tag = tag, center = props[0][1])
-    #comp_plot(data = params[3][0:2], name = 'Fluence', fax = props[1], units = 'Jy ms', tag = tag, labels = labels, log = False)
+    comp_plot(data = params[0][0:1], name = 'Amplitude', fax = props[2], units = 'Flux Density', tag = tag, labels = labels, log = False)
 
 main()
