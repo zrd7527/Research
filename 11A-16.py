@@ -160,7 +160,7 @@ def destroy_lower(data, index):
             data[i][j] = 0.0
     return(data)
 
-def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, fax, tag):
+def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, factor, fax, tag):
     ''' 
         Finds parameters of data components
         Inputs:
@@ -191,25 +191,26 @@ def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, fax, tag):
                 widths[0].append(x[1])
                 amps[0].append(GetFit[0][j])
                 mus[0].append(GetFit[1][j])
-                fluence[0].append(np.sum(GetFit[2][0:(phlim[0]-pllim[0])])/(1000*2892))     # Sum area under fit curve then convert from flux density and phase bin units to Jy*ms
-            elif pllim[1] < GetFit[1][j] < phlim[1] and (len(mus[1]) - 1) < i and fllim[1] < i < fhlim[1]:
+                hwind = int(np.round(0.5*widths[0][i]))           # Define the half width and half max index for fluence calculation
+                fluence[0].append(np.sum(GetFit[2][0:(phlim[0]-pllim[0])]/(1000*40*factor)))                    # Sum area under fit curve then convert\
+            elif pllim[1] < GetFit[1][j] < phlim[1] and (len(mus[1]) - 1) < i and fllim[1] < i < fhlim[1]:      # from flux density and phase bin units to Jy*ms
                 x = burst_prop(data[i][(phlim[0]+1):pllim[2]])    # Find FWHM using previous component high limit and next component low limit\
-                widths[1].append(x[1])                          # Giving extra noise around component provides more accurate FWHM
+                widths[1].append(x[1])                            # Giving extra noise around component provides more accurate FWHM
                 amps[1].append(GetFit[0][j])
                 mus[1].append(GetFit[1][j])
-                fluence[1].append(np.sum(GetFit[2][(pllim[1]-pllim[0]):(phlim[1]-pllim[0])])/(1000*2892))   # All index ranges of fluence calculation offset by pllim[0] becasue that is where the fit starts
-            elif pllim[2] < GetFit[1][j] < phlim[2] and (len(mus[2]) - 1) < i and fllim[2] < i < fhlim[2]:
+                fluence[1].append(np.sum(GetFit[2][(pllim[1]-pllim[0]):(phlim[1]-pllim[0])])/(1000*40*factor))   # All index ranges of fluence calculation offset by pllim[0]\
+            elif pllim[2] < GetFit[1][j] < phlim[2] and (len(mus[2]) - 1) < i and fllim[2] < i < fhlim[2]:       # because that is where the fit starts
                 x = burst_prop(data[i][(phlim[1]+1):pllim[3]])
                 widths[2].append(x[1])
                 amps[2].append(GetFit[0][j])
                 mus[2].append(GetFit[1][j])
-                fluence[2].append(np.sum(GetFit[2][(pllim[2]-pllim[0]):(phlim[2]-pllim[0])])/(1000*2892))
+                fluence[2].append(np.sum(GetFit[2][(pllim[2]-pllim[0]):(phlim[2]-pllim[0])])/(1000*40*factor))
             elif pllim[3] < GetFit[1][j] < phlim[3] and (len(mus[3]) - 1) < i and fllim[3] < i < fhlim[3]:
                 x = burst_prop(data[i][(phlim[2]+1):(phlim[3]+1)])
                 widths[3].append(x[1])
                 amps[3].append(GetFit[0][j])
                 mus[3].append(GetFit[1][j])
-                fluence[3].append(np.sum(GetFit[2][(pllim[3]-pllim[0]):(phlim[3]-pllim[0])])/(1000*2892))
+                fluence[3].append(np.sum(GetFit[2][(pllim[3]-pllim[0]):(phlim[3]-pllim[0])])/(1000*40*factor))
         if (len(mus[0]) - 1) < i:                   # For the case of no component found
             mus[0].append(np.nan)
             amps[0].append(0)
@@ -435,18 +436,22 @@ def burst_11A_prop():
         Returns:
             params - Array of component parameters for burst 11A
             data - Full data of burst after noise reduction, array of frequency data arrays
+            smax - Maximum signal of burst in mJy
             fax - Frequency axis array
     '''
     new = start(filename = '11A_16sec.calib.4p')
     data = new[1]
     tag = '11A'
+    smax = 380.5
     fax = new[2]
     PhaseLowLims = [350, 363, 380, 395]
     PhaseHighLims = [362, 370, 390, 420]
     FreqLowLims = [11, 10, 17, 33]
     FreqHighLims = [26, 35, 47, 52]
-    params = comp_param(data = data, mode = 'gaussian', n = 4, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = fax, tag = tag)
-    return(params, data, fax)
+    peak = find_peak(data[FreqLowLims[0]:FreqHighLims[3]])
+    factor = peak[0]/smax
+    params = comp_param(data = data, mode = 'gaussian', n = 4, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, factor = factor, fax = fax, tag = tag)
+    return(params, data, smax, fax)
 
 def burst_12B_prop():
     '''
@@ -456,18 +461,22 @@ def burst_12B_prop():
         Returns:
             params - Array of component parameters for burst 12B
             data - Full data of burst after noise reduction, array of frequency data arrays
+            smax - Maximum signal of burst in mJy
             fax - Frequncy axis array
     '''
     new = start(filename = '12B_743sec.calib.4p')
     data = new[1]
     tag = '12B'
+    smax = 331.4
     fax = new[2]
     PhaseLowLims = [65, 85, 115, 0]            # Must include a third lower limit for width calculation
     PhaseHighLims = [75, 105, 0, 0]
     FreqLowLims = [ 11, 28, 0, 0]
     FreqHighLims = [25, 45, 0, 0]
-    params = comp_param(data = data, mode = 'gaussian', n = 2, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = fax, tag = tag)
-    return(params, data, fax)
+    peak = find_peak(data[FreqLowLims[0]:FreqHighLims[1]])
+    factor = peak[0]/smax
+    params = comp_param(data = data, mode = 'gaussian', n = 2, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, factor = factor, fax = fax, tag = tag)
+    return(params, data, smax, fax)
 
 def single_comp_prop(tag):
     '''
@@ -477,75 +486,101 @@ def single_comp_prop(tag):
         Returns:
             params - Array of component parameters for desired single component burst
             data - Full data of burst after noise reduction, array of frequency data arrays
+            smax - Maximum signal of burst in mJy
             fax - Frequency axis array
     '''
     if tag == '11B':
         new = start(filename = '11B_263sec.calib.4p')
-        PhaseLowLims = [72, 90, 0, 0]
+        PhaseLowLims = [72, 90, 0, 0]       # All must include a second lower limit for width calculation
         PhaseHighLims = [84, 0, 0, 0]
         FreqLowLims = [37, 0, 0, 0]
         FreqHighLims = [48, 0, 0, 0]
+        smax = 51.9
     elif tag == '11C':
         new = start(filename = '11C_284sec.calib.4p')
         PhaseLowLims = [125, 145, 0, 0]
         PhaseHighLims = [140, 0, 0, 0]
         FreqLowLims = [10, 0, 0, 0]
         FreqHighLims = [21, 0, 0, 0]
+        smax = 85.2
     elif tag == '11D':
         new = start(filename = '11D_323sec.calib.4p')
         PhaseLowLims = [5, 40, 0, 0]
         PhaseHighLims = [35, 0, 0, 0]
         FreqLowLims = [11, 0, 0, 0]
         FreqHighLims = [35, 0, 0, 0]
+        smax = 314.8
     elif tag == '11F':
         new = start(filename = '11F_356sec.calib.4p')
         PhaseLowLims = [455, 500, 0, 0]
         PhaseHighLims = [490, 0, 0, 0]
         FreqLowLims = [10, 0, 0, 0]
         FreqHighLims = [22, 0, 0, 0]
+        smax = 157.5
     elif tag == '11G':
         new = start(filename = '11G_580sec.calib.4p')
         PhaseLowLims = [290, 310, 0, 0]
         PhaseHighLims = [305, 0, 0, 0]
         FreqLowLims = [40, 0, 0, 0]
         FreqHighLims = [48, 0, 0, 0]
+        smax = 52.9
     elif tag == '11H':
         new = start(filename = '11H_597sec.calib.4p')
         PhaseLowLims = [12, 37, 0, 0]
         PhaseHighLims = [32, 0, 0, 0]
         FreqLowLims = [0, 0, 0, 0]
         FreqHighLims = [23, 0, 0, 0]
+        smax = 699.9
     elif tag == '11I':
         new = start(filename = '11I_691sec.calib.4p')
         PhaseLowLims = [138, 165, 0, 0]
         PhaseHighLims = [160, 0, 0, 0]
         FreqLowLims = [32, 0, 0, 0]
         FreqHighLims = [56, 0, 0, 0]
+        smax = 125.5
     else:
         raise NameError('Tag Not Found')
     data = new[1]
+    peak = find_peak(data[FreqLowLims[0]:FreqHighLims[0]])
+    factor = peak[0]/smax
     fax = new[2]
-    params = comp_param(data = data, mode = 'gaussian', n = 1, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, fax = fax, tag = tag)
-    return(params, data, fax)
+    params = comp_param(data = data, mode = 'gaussian', n = 1, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, factor = factor, fax = fax, tag = tag)
+    return(params, data, smax, fax)
 
 def main():
-    tag = '11I'
-    props = single_comp_prop(tag = tag)
-    params = props[0]
-    #print(np.sum(params[3][0]))
-    '''
-    x = np.linspace(1, 64, 63)
-    props = burst_11A_prop()
-    params = props[0]
-    fax = props[1]
-    n = 1
-    fluence = params[3][2]
-    lnorm_fit(xin = x, burst = fluence[1:], n = n, plot = True, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 3')
-    '''
+    tags = ['11A', '12B', '11B', '11C', '11D', '11F', '11G', '11H', '11I']
+    fluences = []
+    tstdevs = []
+    skews = []
+    kurtoses = []
+    for i in range(0, len(tags)):
+        if tags[i] == '11A':
+            props = burst_11A_prop()
+            #fluence = 0
+            for i in range(0, len(props[0][3])):
+                #el = np.sum(props[0][3][i])
+                #fluence += el
+                tstdevs.append(sci.stats.tstd(props[0][3][i]))
+                skews.append(sci.stats.skew(props[0][3][i]))
+                kurtoses.append(sci.stats.kurtosis(props[0][3][i]))
+        #elif tags[i] == '12B':
+            #props = burst_12B_prop()
+            #fluence = 0
+            #for i in props[0][3]:
+                #el = np.sum(i)
+                #fluence += el
+        #else:
+            #props = single_comp_prop(tag = tags[i])
+            #fluence = np.sum(props[0][3][0])
+        #fluences.append(fluence)
+    #print(fluences)
+    print(tstdevs)
+    print(skews)
+    print(kurtoses)
     #gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
     #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
-    labels = ('Comp 1')#, 'Comp 2', 'Comp 3', 'Comp 4')
+    #labels = ('Comp 1'), 'Comp 2', 'Comp 3', 'Comp 4')
     #data_plot(data = props[1], fax = props[2], tag = tag, center = props[0][1])
-    comp_plot(data = params[0][0:1], name = 'Amplitude', fax = props[2], units = 'Flux Density', tag = tag, labels = labels, log = False)
+    #comp_plot(data = params[0][0:1], name = 'Amplitude', fax = props[2], units = 'Flux Density', tag = tag, labels = labels, log = False)
 
 main()
