@@ -92,6 +92,25 @@ def freq_av(data, tag, plot, xlims):
         plt.savefig(tag + '_FreqAv')
     return(av)
 
+def moments(data):
+    '''
+        Finds statistical moments (standard dev, skew, kurtosis) of input distributions or data
+        Inputs:
+            data - Array of distribution arrays to find moments of
+        Returns:
+            tstdev - Second moment of dsitribution, standard deviation array
+            skews - Third moment of distribution, skew array
+            kurtoses - Fourth moment of distribution, kurtosis array
+    '''
+    tstdev = []
+    skews = []
+    kurtoses = []
+    for i in range(0, len(data)):
+        tstdev.append(sci.stats.tstd(data[i]))
+        skews.append(sci.stats.skew(data[i]))
+        kurtoses.append(sci.stats.kurtosis(data[i]))
+    return(tstdev, skews, kurtoses)
+
 def mitigate(ar):
     ''' 
         Finds and removes dead channels and rfi
@@ -191,26 +210,25 @@ def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, factor, fax, tag):
                 widths[0].append(x[1])
                 amps[0].append(GetFit[0][j])
                 mus[0].append(GetFit[1][j])
-                hwind = int(np.round(0.5*widths[0][i]))           # Define the half width and half max index for fluence calculation
-                fluence[0].append(np.sum(GetFit[2][0:(phlim[0]-pllim[0])]/(1000*40*factor)))                    # Sum area under fit curve then convert\
+                fluence[0].append(np.sum(GetFit[2][0:(phlim[0]-pllim[0])])/(1000*factor))                       # Sum area under fit curve then convert\
             elif pllim[1] < GetFit[1][j] < phlim[1] and (len(mus[1]) - 1) < i and fllim[1] < i < fhlim[1]:      # from flux density and phase bin units to Jy*ms
                 x = burst_prop(data[i][(phlim[0]+1):pllim[2]])    # Find FWHM using previous component high limit and next component low limit\
                 widths[1].append(x[1])                            # Giving extra noise around component provides more accurate FWHM
                 amps[1].append(GetFit[0][j])
                 mus[1].append(GetFit[1][j])
-                fluence[1].append(np.sum(GetFit[2][(pllim[1]-pllim[0]):(phlim[1]-pllim[0])])/(1000*40*factor))   # All index ranges of fluence calculation offset by pllim[0]\
-            elif pllim[2] < GetFit[1][j] < phlim[2] and (len(mus[2]) - 1) < i and fllim[2] < i < fhlim[2]:       # because that is where the fit starts
+                fluence[1].append(np.sum(GetFit[2][(pllim[1]-pllim[0]):(phlim[1]-pllim[0])])/(1000*factor))     # All index ranges of fluence calculation offset by pllim[0]\
+            elif pllim[2] < GetFit[1][j] < phlim[2] and (len(mus[2]) - 1) < i and fllim[2] < i < fhlim[2]:      # because that is where the fit starts
                 x = burst_prop(data[i][(phlim[1]+1):pllim[3]])
                 widths[2].append(x[1])
                 amps[2].append(GetFit[0][j])
                 mus[2].append(GetFit[1][j])
-                fluence[2].append(np.sum(GetFit[2][(pllim[2]-pllim[0]):(phlim[2]-pllim[0])])/(1000*40*factor))
+                fluence[2].append(np.sum(GetFit[2][(pllim[2]-pllim[0]):(phlim[2]-pllim[0])])/(1000*factor))
             elif pllim[3] < GetFit[1][j] < phlim[3] and (len(mus[3]) - 1) < i and fllim[3] < i < fhlim[3]:
                 x = burst_prop(data[i][(phlim[2]+1):(phlim[3]+1)])
                 widths[3].append(x[1])
                 amps[3].append(GetFit[0][j])
                 mus[3].append(GetFit[1][j])
-                fluence[3].append(np.sum(GetFit[2][(pllim[3]-pllim[0]):(phlim[3]-pllim[0])])/(1000*40*factor))
+                fluence[3].append(np.sum(GetFit[2][(pllim[3]-pllim[0]):(phlim[3]-pllim[0])])/(1000*factor))
         if (len(mus[0]) - 1) < i:                   # For the case of no component found
             mus[0].append(np.nan)
             amps[0].append(0)
@@ -428,6 +446,17 @@ def comp_plot(data, name, fax, units, tag, labels, log):
         plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
         plt.savefig(tag + '_' + name)
 
+def moment_hist(vals, name):
+    '''
+        Creates a histogram of input moment values
+        Inputs:
+            vals - Moment value array
+            name - Moment name string, used for x axis label, title, and saving
+    '''
+    plt.hist(vals, bins = 20)
+    plt.xlabel(name)
+    plt.savefig('Half_Fluence_' + name)
+
 def burst_11A_prop():
     '''
         Uses manually determined frequency and phase ranges to output burst 11A component parameters
@@ -449,7 +478,7 @@ def burst_11A_prop():
     FreqLowLims = [11, 10, 17, 33]
     FreqHighLims = [26, 35, 47, 52]
     peak = find_peak(data[FreqLowLims[0]:FreqHighLims[3]])
-    factor = peak[0]/smax
+    factor = (peak[0]/smax)*40              # Conversion of peak flux density to mJy by dividing by the max signal in mJy then multiplied by phase bin conversion to ms
     params = comp_param(data = data, mode = 'gaussian', n = 4, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, factor = factor, fax = fax, tag = tag)
     return(params, data, smax, fax)
 
@@ -474,7 +503,7 @@ def burst_12B_prop():
     FreqLowLims = [ 11, 28, 0, 0]
     FreqHighLims = [25, 45, 0, 0]
     peak = find_peak(data[FreqLowLims[0]:FreqHighLims[1]])
-    factor = peak[0]/smax
+    factor = (peak[0]/smax)*27          # Smaller phase bin conversion because this burst has a larger bscrunch
     params = comp_param(data = data, mode = 'gaussian', n = 2, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, factor = factor, fax = fax, tag = tag)
     return(params, data, smax, fax)
 
@@ -542,41 +571,42 @@ def single_comp_prop(tag):
         raise NameError('Tag Not Found')
     data = new[1]
     peak = find_peak(data[FreqLowLims[0]:FreqHighLims[0]])
-    factor = peak[0]/smax
+    factor = (peak[0]/smax)*40          # All single component bursts have the same phase bin conversion as burst 11A
     fax = new[2]
     params = comp_param(data = data, mode = 'gaussian', n = 1, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, factor = factor, fax = fax, tag = tag)
     return(params, data, smax, fax)
 
 def main():
     tags = ['11A', '12B', '11B', '11C', '11D', '11F', '11G', '11H', '11I']
-    fluences = []
-    tstdevs = []
+    stdev = []
     skews = []
-    kurtoses = []
-    for i in range(0, len(tags)):
-        if tags[i] == '11A':
+    kurt = []
+    for j in range(0, len(tags)):
+        if tags[j] == '11A':
             props = burst_11A_prop()
-            #fluence = 0
-            for i in range(0, len(props[0][3])):
-                #el = np.sum(props[0][3][i])
-                #fluence += el
-                tstdevs.append(sci.stats.tstd(props[0][3][i]))
-                skews.append(sci.stats.skew(props[0][3][i]))
-                kurtoses.append(sci.stats.kurtosis(props[0][3][i]))
-        #elif tags[i] == '12B':
-            #props = burst_12B_prop()
-            #fluence = 0
-            #for i in props[0][3]:
-                #el = np.sum(i)
-                #fluence += el
-        #else:
-            #props = single_comp_prop(tag = tags[i])
-            #fluence = np.sum(props[0][3][0])
-        #fluences.append(fluence)
-    #print(fluences)
-    print(tstdevs)
-    print(skews)
-    print(kurtoses)
+            moms = moments(data = props[0][3])
+            for k in range(0, len(moms[0])):
+                stdev.append(moms[0][k])
+                skews.append(moms[1][k])
+                kurt.append(moms[2][k])
+        elif tags[j] == '12B':
+            props = burst_12B_prop()
+            moms = moments(data = props[0][3])
+            for k in range(0, len(moms[0][0:2])):
+                stdev.append(moms[0][k])
+                skews.append(moms[1][k])
+                kurt.append(moms[2][k])
+        else:
+            props = single_comp_prop(tag = tags[j])
+            fluence = props[0][3]
+            moms = moments(data = fluence)
+            stdev.append(moms[0][0])
+            skews.append(moms[1][0])
+            kurt.append(moms[2][0])
+    moment_hist(vals = stdev, name = 'StandardDev')
+    #moment_hist(vals = skews, name = 'Skew')
+    moment_hist(vals = kurt, name = 'Kurtosis')
+    
     #gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
     #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
     #labels = ('Comp 1'), 'Comp 2', 'Comp 3', 'Comp 4')
