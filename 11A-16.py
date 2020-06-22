@@ -206,7 +206,7 @@ def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, factor, fax, tag):
         GetFit = fit(burst = data[i], mode = mode, n = n, llimit = pllim[0], hlimit = phlim[n-1], freq = fax[i], tag = tag, plot = False)   # Automatic fit routine
         for j in range(0, len(GetFit[1])):
             if pllim[0] < GetFit[1][j] < phlim[0] and (len(mus[0]) - 1) < i and fllim[0] < i < fhlim[0]:         # Check if component center is within given phase limits and frequency limits
-                x = burst_prop(data[i][(pllim[0]-7):pllim[1]])
+                x = burst_prop(data[i][(pllim[0]-5):pllim[1]])
                 widths[0].append(x[1])
                 amps[0].append(GetFit[0][j])
                 mus[0].append(GetFit[1][j])
@@ -446,16 +446,26 @@ def comp_plot(data, name, fax, units, tag, labels, log):
         plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
         plt.savefig(tag + '_' + name)
 
-def moment_hist(vals, name):
+def moment_hist(vals, xname, pname, multicomp):
     '''
         Creates a histogram of input moment values
         Inputs:
             vals - Moment value array
-            name - Moment name string, used for x axis label, title, and saving
+            xname - Moment name string, used for x axis label, title, and saving
+            pname - Parameter name string, used for saving
+            multicomp - Boolean, true for making plot of multiple components
+        Returns:
+            nothing
     '''
-    plt.hist(vals, bins = 20)
-    plt.xlabel(name)
-    plt.savefig('Half_Fluence_' + name)
+    plt.hist(vals, bins = 10)
+    plt.xlabel(xname)
+    if multicomp == True:
+        plt.title(xname + ' of Component ' + pname)
+        plt.savefig('Multi_' + pname + '_' + xname[0:4])
+    else:
+        plt.title(xname + ' of Burst ' + pname)
+        plt.savefig('Single_' + pname + '_' + xname[0:4])
+    plt.clf()
 
 def burst_11A_prop():
     '''
@@ -505,6 +515,70 @@ def burst_12B_prop():
     peak = find_peak(data[FreqLowLims[0]:FreqHighLims[1]])
     factor = (peak[0]/smax)*27          # Smaller phase bin conversion because this burst has a larger bscrunch
     params = comp_param(data = data, mode = 'gaussian', n = 2, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, factor = factor, fax = fax, tag = tag)
+    return(params, data, smax, fax)
+
+def unres_comp_prop(tag, single):
+    '''
+        Inputs:
+            tag - Burst name of desired burst parameters, e.g. 11E
+            single - Boolean, if true retrieve burst parameters as a single component
+        Returns:
+            params
+            data
+            smax
+            fax
+    '''
+    if tag == '11E':
+        new = start(filename = '11E_344sec.calib.4p')
+        smax = 126.8
+        if single == False:
+            PhaseLowLims = [360, 383, 420, 0]
+            PhaseHighLims = [382, 415, 0, 0]
+            FreqLowLims = [12, 28, 0, 0]
+            FreqHighLims = [23, 49, 0, 0]
+        elif single == True:
+            PhaseLowLims = [360, 420, 0, 0]
+            PhaseHighLims = [415, 0, 0, 0]
+            FreqLowLims = [12, 0, 0, 0]
+            FreqHighLims = [49, 0, 0, 0]
+    elif tag == '11K':
+        new = start(filename = '11K_769sec.calib.4p')
+        smax = 105.2
+        if single == False:
+            PhaseLowLims = [393, 402, 427, 0]
+            PhaseHighLims = [401, 422, 0, 0]
+            FreqLowLims = [0, 7, 0, 0]
+            FreqHighLims = [4, 22, 0, 0]
+        elif single == True:
+            PhaseLowLims = [393, 427, 0, 0]
+            PhaseHighLims = [422, 0, 0, 0]
+            FreqLowLims = [0, 0, 0, 0]
+            FreqHighLims = [22, 0, 0, 0]
+    elif tag == '11O':
+        new = start(filename = '11O_1142sec.calib.4p')
+        smax = 139.9
+        if single == False:
+            PhaseLowLims = [460, 469, 495, 0]
+            PhaseHighLims = [468, 490, 0, 0]
+            FreqLowLims = [24, 38, 0, 0]
+            FreqHighLims = [37, 46, 0, 0]
+        elif single == True:
+            PhaseLowLims = [460, 495, 0, 0]
+            PhaseHighLims = [490, 0, 0, 0]
+            FreqLowLims = [24, 0, 0, 0]
+            FreqHighLims = [46, 0, 0, 0]
+    else:
+        raise NameError('Tag Not Found')
+    data = new[1]
+    if single == False:
+        peak = find_peak(data[FreqLowLims[0]:FreqHighLims[1]])
+        n = 2
+    elif single == True:
+        peak = find_peak(data[FreqLowLims[0]:FreqHighLims[0]])
+        n = 1
+    factor = (peak[0]/smax)*40
+    fax = new[2]
+    params = comp_param(data = data, mode = 'gaussian', n = n, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, factor = factor, fax = fax, tag = tag)
     return(params, data, smax, fax)
 
 def single_comp_prop(tag):
@@ -575,35 +649,35 @@ def single_comp_prop(tag):
         FreqHighLims = [40, 0, 0, 0]
         smax = 118.6
     elif tag == '11M':
-        new = start('11M_993sec.calib.4p')
+        new = start(filename = '11M_993sec.calib.4p')
         PhaseLowLims = [253, 267, 0, 0]
         PhaseHighLims = [264, 0, 0, 0]
         FreqLowLims = [11, 0, 0, 0]
         FreqHighLims = [21, 0, 0, 0]
         smax = 94.7
     elif tag == '11N':
-        new = start('11N_1036sec.calib.4p')
+        new = start(filename = '11N_1036sec.calib.4p')
         PhaseLowLims = [45, 65, 0, 0]
         PhaseHighLims = [60, 0, 0, 0]
         FreqLowLims = [41, 0, 0, 0]
         FreqHighLims = [60, 0, 0, 0]
         smax = 256.7
     elif tag == '11Q':
-        new = start('11Q_1454sec.calib.4p')
+        new = start(filename = '11Q_1454sec.calib.4p')
         PhaseLowLims = [57, 73, 0, 0]
         PhaseHighLims = [68, 0, 0, 0]
         FreqLowLims = [29, 0, 0, 0]
         FreqHighLims = [47, 0, 0, 0]
         smax = 400.2
     elif tag == '12A':
-        new = start('12A_104sec.calib.4p')
+        new = start(filename = '12A_104sec.calib.4p')
         PhaseLowLims = [427, 470, 0, 0]
         PhaseHighLims = [457, 0, 0, 0]
         FreqLowLims = [33, 0, 0, 0]
         FreqHighLims = [48, 0, 0, 0]
         smax = 132.2
     elif tag == '12C':
-        new = start('12C_1526sec.calib.4p')
+        new = start(filename = '12C_1526sec.calib.4p')
         PhaseLowLims = [305, 350, 0, 0]
         PhaseHighLims = [340, 0, 0, 0]
         FreqLowLims = [36, 0, 0, 0]
@@ -619,26 +693,48 @@ def single_comp_prop(tag):
     return(params, data, smax, fax)
 
 def main():
-    tags = ['11A', '12B', '11B', '11C', '11D', '11F', '11G', '11H', '11I', '11J', '11M', '11N', '12A', '12C']
-    '''
+    tags = ['11A', '12B', '11B', '11C', '11D', '11E', '11F', '11G', '11H', '11I', '11J', '11K', '11M', '11N', '11O', '11Q', '12A', '12C']
+    multitags = ['11A', '12B', '11E', '11K', '11O']
+    
     stdev = []
     skews = []
     kurt = []
-    for j in range(0, len(tags)):
-        if tags[j] == '11A':
+    for j in range(0, len(multitags)):
+        if multitags[j] == '11A':
             props = burst_11A_prop()
             moms = moments(data = props[0][3])
             for k in range(0, len(moms[0])):
                 stdev.append(moms[0][k])
                 skews.append(moms[1][k])
                 kurt.append(moms[2][k])
-        elif tags[j] == '12B':
+        elif multitags[j] == '12B':
             props = burst_12B_prop()
             moms = moments(data = props[0][3])
             for k in range(0, len(moms[0][0:2])):
                 stdev.append(moms[0][k])
                 skews.append(moms[1][k])
                 kurt.append(moms[2][k])
+        elif multitags[j] == '11E':
+            props = unres_comp_prop(tag = multitags[j], single = True)
+            moms = moments(data = props[0][3])
+            for k in range(0, len(moms[0][0:2])):
+                stdev.append(moms[0][k])
+                skews.append(moms[1][k])
+                kurt.append(moms[2][k])
+        elif multitags[j] == '11K':
+            props = unres_comp_prop(tag = multitags[j], single = True)
+            moms = moments(data = props[0][3])
+            for k in range(0, len(moms[0][0:2])):
+                stdev.append(moms[0][k])
+                skews.append(moms[1][k])
+                kurt.append(moms[2][k])
+        elif multitags[j] == '11O':
+            props = unres_comp_prop(tag = multitags[j], single = True)
+            moms = moments(data = props[0][3])
+            for k in range(0, len(moms[0][0:2])):
+                stdev.append(moms[0][0])
+                skews.append(moms[1][0])
+                kurt.append(moms[2][0])
         else:
             props = single_comp_prop(tag = tags[j])
             fluence = props[0][3]
@@ -646,17 +742,18 @@ def main():
             stdev.append(moms[0][0])
             skews.append(moms[1][0])
             kurt.append(moms[2][0])
-    moment_hist(vals = stdev, name = 'StandardDev')
-    #moment_hist(vals = skews, name = 'Skew')
-    moment_hist(vals = kurt, name = 'Kurtosis')
-    '''
+    ParamName = 'Fluence'
+    moment_hist(vals = stdev, xname = 'Standard Deviation', pname = ParamName, multicomp = True)
+    moment_hist(vals = skews, xname = 'Skew', pname = ParamName, multicomp = True)
+    moment_hist(vals = kurt, xname = 'Kurtosis', pname = ParamName, multicomp = True)
+    
     #gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
     #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
-    #for j in range(0, len(tags)):    
-        #props = single_comp_props(tag = tags[j])
+    #for j in range(0, len(tags2)):    
+        #props = unres_comp_prop(tag = tags2[j], single = False)
         #params = props[0]
         #labels = ('Comp 1')#, 'Comp 2', 'Comp 3', 'Comp 4')
-        #data_plot(data = props[1], fax = props[3], tag = tags[j], center = params[1])
+        #data_plot(data = props[1], fax = props[3], tag = tags2[j], center = params[1])
         #comp_plot(data = [params[0][0]], name = 'Amplitude', fax = props[3], units = 'Flux Density', tag = tags[j], labels = labels, log = False)
         #plt.clf()
 
