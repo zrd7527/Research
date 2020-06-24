@@ -92,7 +92,7 @@ def freq_av(data, tag, plot, xlims):
         plt.savefig(tag + '_FreqAv')
     return(av)
 
-def moments(data):
+def moments(data, axis):
     '''
         Finds statistical moments (standard dev, skew, kurtosis) of input distributions or data
         Inputs:
@@ -107,8 +107,8 @@ def moments(data):
     kurtoses = []
     for i in range(0, len(data)):
         tstdev.append(sci.stats.tstd(data[i]))
-        skews.append(sci.stats.skew(data[i]))
-        kurtoses.append(sci.stats.kurtosis(data[i]))
+        skews.append(sci.stats.skew(data[i], axis = axis))
+        kurtoses.append(sci.stats.kurtosis(data[i], axis = axis))
     return(tstdev, skews, kurtoses)
 
 def mitigate(ar):
@@ -693,13 +693,21 @@ def single_comp_prop(tag):
     return(params, data, smax, fax)
 
 def main():
-    tags = ['11A', '12B', '11B', '11C', '11D', '11E', '11F', '11G', '11H', '11I', '11J', '11K', '11M', '11N', '11O', '11Q', '12A', '12C']
+    tags = ['11B', '11C', '11D', '11E', '11F', '11G', '11H', '11I', '11J', '11K', '11M', '11N', '11O', '11Q', '12A', '12C']
     multitags = ['11A', '12B', '11E', '11K', '11O']
-    
+    x = np.linspace(1, 64)
+    retval = np.zeros(len(x))
+    retval += lognorm(x, amp = 0.1, mu = 2, sigma = 0.5)
+    res = retval[::-1]
+    cap1 = np.argmax(retval)
+    cap2 = np.argmax(res)
+    print(moments(data = [newret, newres], axis = 0))
+    '''
     stdev = []
     skews = []
     kurt = []
-    for j in range(0, len(multitags)):
+    for j in range(0, 16):
+        
         if multitags[j] == '11A':
             props = burst_11A_prop()
             moms = moments(data = props[0][3])
@@ -714,27 +722,26 @@ def main():
                 stdev.append(moms[0][k])
                 skews.append(moms[1][k])
                 kurt.append(moms[2][k])
-        elif multitags[j] == '11E':
-            props = unres_comp_prop(tag = multitags[j], single = True)
+        
+        if tags[j] == '11E':
+            props = unres_comp_prop(tag = tags[j], single = True)
             moms = moments(data = props[0][3])
-            for k in range(0, len(moms[0][0:2])):
-                stdev.append(moms[0][k])
-                skews.append(moms[1][k])
-                kurt.append(moms[2][k])
-        elif multitags[j] == '11K':
-            props = unres_comp_prop(tag = multitags[j], single = True)
+            #for k in range(2):
+            stdev.append(moms[0][0])
+            skews.append(moms[1][0])
+            kurt.append(moms[2][0])
+        elif tags[j] == '11K':
+            props = unres_comp_prop(tag = tags[j], single = True)
             moms = moments(data = props[0][3])
-            for k in range(0, len(moms[0][0:2])):
-                stdev.append(moms[0][k])
-                skews.append(moms[1][k])
-                kurt.append(moms[2][k])
-        elif multitags[j] == '11O':
-            props = unres_comp_prop(tag = multitags[j], single = True)
+            stdev.append(moms[0][0])
+            skews.append(moms[1][0])
+            kurt.append(moms[2][0])
+        elif tags[j] == '11O':
+            props = unres_comp_prop(tag = tags[j], single = True)
             moms = moments(data = props[0][3])
-            for k in range(0, len(moms[0][0:2])):
-                stdev.append(moms[0][0])
-                skews.append(moms[1][0])
-                kurt.append(moms[2][0])
+            stdev.append(moms[0][0])
+            skews.append(moms[1][0])
+            kurt.append(moms[2][0])
         else:
             props = single_comp_prop(tag = tags[j])
             fluence = props[0][3]
@@ -743,18 +750,18 @@ def main():
             skews.append(moms[1][0])
             kurt.append(moms[2][0])
     ParamName = 'Fluence'
-    moment_hist(vals = stdev, xname = 'Standard Deviation', pname = ParamName, multicomp = True)
-    moment_hist(vals = skews, xname = 'Skew', pname = ParamName, multicomp = True)
-    moment_hist(vals = kurt, xname = 'Kurtosis', pname = ParamName, multicomp = True)
-    
+    moment_hist(vals = stdev, xname = 'Standard Deviation', pname = ParamName, multicomp = False)
+    moment_hist(vals = skews, xname = 'Skew', pname = ParamName, multicomp = False)
+    moment_hist(vals = kurt, xname = 'Kurtosis', pname = ParamName, multicomp = False)
+    '''
     #gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
     #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
-    #for j in range(0, len(tags2)):    
-        #props = unres_comp_prop(tag = tags2[j], single = False)
+    #for j in range(2, len(multitags)):    
+        #props = unres_comp_prop(tag = multitags[j], single = False)
         #params = props[0]
-        #labels = ('Comp 1')#, 'Comp 2', 'Comp 3', 'Comp 4')
+        #labels = ('Comp 1', 'Comp 2')#, 'Comp 3', 'Comp 4')
         #data_plot(data = props[1], fax = props[3], tag = tags2[j], center = params[1])
-        #comp_plot(data = [params[0][0]], name = 'Amplitude', fax = props[3], units = 'Flux Density', tag = tags[j], labels = labels, log = False)
+        #comp_plot(data = params[3][0:2], name = 'Fluence', fax = props[3], units = 'Jy ms', tag = multitags[j], labels = labels, log = False)
         #plt.clf()
 
 main()
