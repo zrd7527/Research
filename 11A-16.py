@@ -92,7 +92,7 @@ def freq_av(data, tag, plot, xlims):
         plt.savefig(tag + '_FreqAv')
     return(av)
 
-def moments(data, axis):
+def moments(data):
     '''
         Finds statistical moments (standard dev, skew, kurtosis) of input distributions or data
         Inputs:
@@ -102,14 +102,45 @@ def moments(data, axis):
             skews - Third moment of distribution, skew array
             kurtoses - Fourth moment of distribution, kurtosis array
     '''
-    tstdev = []
+    mus = []
+    stdevs = []
     skews = []
     kurtoses = []
     for i in range(0, len(data)):
-        tstdev.append(sci.stats.tstd(data[i]))
-        skews.append(sci.stats.skew(data[i], axis = axis))
-        kurtoses.append(sci.stats.kurtosis(data[i], axis = axis))
-    return(tstdev, skews, kurtoses)
+        mucount = 0
+        dattot = 0
+        N = 0
+        for j in range(0, len(data[i])):
+            if data[i][j] == 0:
+                pass
+            else:
+                mucount += j*data[i][j]
+                dattot += data[i][j]
+                N += 1
+        mu = mucount/dattot
+        mus.append(mu)
+        muind = int(np.round(mu))
+        sdsk = high_order_moments(dat = data[i], order = 2, denom = N**(0.5), tot = dattot, mu = mu, muind = muind, rets = [])
+        stdevs.append((sdsk[0])**(0.5))
+        skews.append(sdsk[1])
+        kurtoses.append(sdsk[2])
+    return(mus, stdevs, skews, kurtoses)
+
+def high_order_moments(dat, order, denom, tot, mu, muind, rets):
+    newcount = 0
+    for i in range(0, len(dat)):
+        if dat[i] == 0:
+            pass
+        else:
+            newcount += ((i*dat[i]) - (mu*dat[muind]))**order
+    moment = newcount/((tot*denom)**order)
+    rets.append(moment)
+    order += 1
+    if order == 5:
+        return(rets)
+    else:
+        denom = rets[0]**(0.5)
+        return high_order_moments(dat, order, denom, tot, mu, muind, rets)
 
 def mitigate(ar):
     ''' 
@@ -206,7 +237,7 @@ def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, factor, fax, tag):
         GetFit = fit(burst = data[i], mode = mode, n = n, llimit = pllim[0], hlimit = phlim[n-1], freq = fax[i], tag = tag, plot = False)   # Automatic fit routine
         for j in range(0, len(GetFit[1])):
             if pllim[0] < GetFit[1][j] < phlim[0] and (len(mus[0]) - 1) < i and fllim[0] < i < fhlim[0]:         # Check if component center is within given phase limits and frequency limits
-                x = burst_prop(data[i][(pllim[0]-5):pllim[1]])
+                x = burst_prop(data[i][(pllim[0]-7):pllim[1]])
                 widths[0].append(x[1])
                 amps[0].append(GetFit[0][j])
                 mus[0].append(GetFit[1][j])
@@ -695,13 +726,11 @@ def single_comp_prop(tag):
 def main():
     tags = ['11B', '11C', '11D', '11E', '11F', '11G', '11H', '11I', '11J', '11K', '11M', '11N', '11O', '11Q', '12A', '12C']
     multitags = ['11A', '12B', '11E', '11K', '11O']
-    x = np.linspace(1, 64)
-    retval = np.zeros(len(x))
-    retval += lognorm(x, amp = 0.1, mu = 2, sigma = 0.5)
-    res = retval[::-1]
-    cap1 = np.argmax(retval)
-    cap2 = np.argmax(res)
-    print(moments(data = [newret, newres], axis = 0))
+    props = burst_11A_prop()
+    fluence = props[0][3]
+    moms = moments(data = fluence)
+    for i in range(0, len(moms)):
+        print(moms[i])
     '''
     stdev = []
     skews = []
@@ -757,11 +786,11 @@ def main():
     #gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
     #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
     #for j in range(2, len(multitags)):    
-        #props = unres_comp_prop(tag = multitags[j], single = False)
+        #props = unres_comp_prop(tag = multitags[j], single = True)
         #params = props[0]
-        #labels = ('Comp 1', 'Comp 2')#, 'Comp 3', 'Comp 4')
+        #labels = ('Comp 1')#, 'Comp 2', 'Comp 3', 'Comp 4')
         #data_plot(data = props[1], fax = props[3], tag = tags2[j], center = params[1])
-        #comp_plot(data = params[3][0:2], name = 'Fluence', fax = props[3], units = 'Jy ms', tag = multitags[j], labels = labels, log = False)
+        #comp_plot(data = [params[3][0]], name = 'Fluence', fax = props[3], units = 'Jy ms', tag = multitags[j], labels = labels, log = False)
         #plt.clf()
 
 main()
