@@ -94,11 +94,12 @@ def freq_av(data, tag, plot, xlims):
 
 def moments(data):
     '''
-        Finds statistical moments (standard dev, skew, kurtosis) of input distributions or data
+        Finds statistical moments (mean, standard deviation, skew, kurtosis) of input distributions or data
         Inputs:
             data - Array of distribution arrays to find moments of
         Returns:
-            tstdev - Second moment of dsitribution, standard deviation array
+            mus - First moment of distribution, wieghted mean array
+            stdevs - Second moment of dsitribution, standard deviation array
             skews - Third moment of distribution, skew array
             kurtoses - Fourth moment of distribution, kurtosis array
     '''
@@ -108,39 +109,59 @@ def moments(data):
     kurtoses = []
     for i in range(0, len(data)):
         mucount = 0
-        dattot = 0
+        tot = 0
         N = 0
         for j in range(0, len(data[i])):
             if data[i][j] == 0:
                 pass
             else:
                 mucount += j*data[i][j]
-                dattot += data[i][j]
+                tot += data[i][j]
                 N += 1
-        mu = mucount/dattot
+        mu = mucount/tot
         mus.append(mu)
         muind = int(np.round(mu))
-        sdsk = high_order_moments(dat = data[i], order = 2, denom = N**(0.5), N = N, tot = dattot, mu = mu, muind = muind, rets = [])
-        stdevs.append((sdsk[0])**(0.5))
-        skews.append(sdsk[1])
-        kurtoses.append(sdsk[2])
+        sigcount = 0
+        for j in range(0, len(data[i])):
+            if data[i][j] == 0:
+                pass
+            else:
+                sigcount += data[i][j]*((j-mu)**2)
+        var = (sigcount*N)/(tot*(N-1))
+        sigma = var**(0.5)
+        stdevs.append(sigma)
+        hom = high_order_moments(data = data[i], tot = tot, order = 3, sigma = sigma, mu = mu, rets = [])
+        skews.append((-1*hom[0]))
+        kurtoses.append((hom[1]-3))
     return(mus, stdevs, skews, kurtoses)
 
-def high_order_moments(dat, order, denom, N, tot, mu, muind, rets):
-    newcount = 0
-    for i in range(0, len(dat)):
-        if dat[i] == 0:
+def high_order_moments(data, tot, order, sigma, mu, rets):
+    '''
+        Helper function for moments(data) function. Recursively finds moments of order 3 and higher
+        of data distribution.
+        Inputs:
+            data - Single distribution array to find moments of
+            tot - Sum of data array
+            order - Starting order of desired moments (usually 3)
+            sigma - Standard deviation of distribution array
+            mu - Weighted mean of distribution array
+            rets - Empty array
+        Returns:
+            rets - Input empty array with third and fourth moment appended
+    '''
+    numer = 0
+    for i in range(0, len(data)):
+        if data[i] == 0:
             pass
         else:
-            newcount += ((i*dat[i]) - (mu*dat[muind]))**order
-    moment = (newcount)/(((denom*tot)**order)*(N**(order-2)))
+            numer += data[i]*((i-mu)**order)
+    moment = numer/(tot*(sigma**order))
     rets.append(moment)
     order += 1
     if order == 5:
         return(rets)
     else:
-        denom = rets[0]**(0.5)
-        return high_order_moments(dat, order, denom, N, tot, mu, muind, rets)
+        return high_order_moments(data, tot, order, sigma, mu, rets)
 
 def mitigate(ar):
     ''' 
@@ -726,6 +747,12 @@ def single_comp_prop(tag):
 def main():
     tags = ['11B', '11C', '11D', '11E', '11F', '11G', '11H', '11I', '11J', '11K', '11M', '11N', '11O', '11Q', '12A', '12C']
     multitags = ['11A', '12B', '11E', '11K', '11O']
+    #x = np.linspace(0, 64, 64)
+    #curve = manual_gaussians(x = x, amp = [1], mu = [32], sigma = [1])
+    props = burst_11A_prop()
+    moms = moments(data = props[0][0])
+    print(moms)
+    '''
     stdev = []
     skews = []
     kurt = []
@@ -734,16 +761,16 @@ def main():
             props = burst_11A_prop()
             moms = moments(data = props[0][3])
             for k in range(0, len(moms[0])):
-                stdev.append(moms[0][k])
-                skews.append(moms[1][k])
-                kurt.append(moms[2][k])
+                stdev.append(moms[1][k])
+                skews.append(moms[2][k])
+                kurt.append(moms[3][k])
         elif multitags[j] == '12B':
             props = burst_12B_prop()
             moms = moments(data = props[0][3][0:2])
             for k in range(2):
-                stdev.append(moms[0][k])
-                skews.append(moms[1][k])
-                kurt.append(moms[2][k])
+                stdev.append(moms[1][k])
+                skews.append(moms[2][k])
+                kurt.append(moms[3][k])
         elif multitags[j] == '11E':
             props = unres_comp_prop(tag = '11E', single = False)
             moms = moments(data = props[0][3][0:2])
@@ -776,7 +803,7 @@ def main():
     moment_hist(vals = stdev, xname = 'Standard Deviation', pname = ParamName, multicomp = True)
     moment_hist(vals = skews, xname = 'Skew', pname = ParamName, multicomp = True)
     moment_hist(vals = kurt, xname = 'Kurtosis', pname = ParamName, multicomp = True)
-    
+    '''
     #gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
     #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
     #for j in range(2, len(multitags)):    
