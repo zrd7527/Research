@@ -132,7 +132,7 @@ def moments(data):
         stdevs.append(sigma)
         hom = high_order_moments(data = data[i], tot = tot, order = 3, sigma = sigma, mu = mu, rets = [])
         skews.append((-1*hom[0]))
-        kurtoses.append((hom[1]-3))
+        kurtoses.append(hom[1])
     return(mus, stdevs, skews, kurtoses)
 
 def high_order_moments(data, tot, order, sigma, mu, rets):
@@ -258,7 +258,7 @@ def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, factor, fax, tag):
         GetFit = fit(burst = data[i], mode = mode, n = n, llimit = pllim[0], hlimit = phlim[n-1], freq = fax[i], tag = tag, plot = False)   # Automatic fit routine
         for j in range(0, len(GetFit[1])):
             if pllim[0] < GetFit[1][j] < phlim[0] and (len(mus[0]) - 1) < i and fllim[0] < i < fhlim[0]:         # Check if component center is within given phase limits and frequency limits
-                x = burst_prop(data[i][(pllim[0]-7):pllim[1]])
+                x = burst_prop(data[i][(pllim[0]-5):pllim[1]])
                 widths[0].append(x[1])
                 amps[0].append(GetFit[0][j])
                 mus[0].append(GetFit[1][j])
@@ -744,66 +744,70 @@ def single_comp_prop(tag):
     params = comp_param(data = data, mode = 'gaussian', n = 1, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, factor = factor, fax = fax, tag = tag)
     return(params, data, smax, fax)
 
-def main():
+def burst_stats(multi):
     tags = ['11B', '11C', '11D', '11E', '11F', '11G', '11H', '11I', '11J', '11K', '11M', '11N', '11O', '11Q', '12A', '12C']
     multitags = ['11A', '12B', '11E', '11K', '11O']
-    #x = np.linspace(0, 64, 64)
-    #curve = manual_gaussians(x = x, amp = [1], mu = [32], sigma = [1])
-    props = burst_11A_prop()
-    moms = moments(data = props[0][0])
-    print(moms)
-    '''
     stdev = []
     skews = []
     kurt = []
-    for j in range(0, len(multitags)):
-        if multitags[j] == '11A':
+    if multi == True:
+        arr = multitags
+        single = False
+        cutoff = 2
+    else:
+        arr = tags
+        single = True
+        cutoff = 1
+    for j in range(0, len(arr)):
+        if arr[j] == '11A':
             props = burst_11A_prop()
             moms = moments(data = props[0][3])
             for k in range(0, len(moms[0])):
                 stdev.append(moms[1][k])
                 skews.append(moms[2][k])
                 kurt.append(moms[3][k])
-        elif multitags[j] == '12B':
+        elif arr[j] == '12B':
             props = burst_12B_prop()
             moms = moments(data = props[0][3][0:2])
             for k in range(2):
                 stdev.append(moms[1][k])
                 skews.append(moms[2][k])
                 kurt.append(moms[3][k])
-        elif multitags[j] == '11E':
-            props = unres_comp_prop(tag = '11E', single = False)
-            moms = moments(data = props[0][3][0:2])
-            for k in range(2):
+        elif arr[j] == '11E':
+            props = unres_comp_prop(tag = '11E', single = single)
+            moms = moments(data = props[0][3][0:cutoff])
+            for k in range(cutoff):
                 stdev.append(moms[1][k])
                 skews.append(moms[2][k])
                 kurt.append(moms[3][k])
-        elif multitags[j] == '11K':
-            props = unres_comp_prop(tag = '11K', single = False)
-            moms = moments(data = props[0][3][0:2])
-            for k in range(2):
+        elif arr[j] == '11K':
+            props = unres_comp_prop(tag = '11K', single = single)
+            moms = moments(data = props[0][3][0:cutoff])
+            for k in range(cutoff):
                 stdev.append(moms[1][k])
                 skews.append(moms[2][k])
                 kurt.append(moms[3][k])
-        elif multitags[j] == '11O':
-            props = unres_comp_prop(tag = '11O', single = False)
-            moms = moments(data = props[0][3][0:2])
-            for k in range(2):
+        elif arr[j] == '11O':
+            props = unres_comp_prop(tag = '11O', single = single)
+            moms = moments(data = props[0][3][0:cutoff])
+            for k in range(cutoff):
                 stdev.append(moms[1][0])
                 skews.append(moms[2][0])
                 kurt.append(moms[3][0])
         else:
-            props = single_comp_prop(tag = tags[j])
+            props = single_comp_prop(tag = arr[j])
             fluence = [props[0][3][0]]
             moms = moments(data = fluence)
             stdev.append(moms[1][0])
             skews.append(moms[2][0])
             kurt.append(moms[3][0])
     ParamName = 'Fluence'
-    moment_hist(vals = stdev, xname = 'Standard Deviation', pname = ParamName, multicomp = True)
-    moment_hist(vals = skews, xname = 'Skew', pname = ParamName, multicomp = True)
-    moment_hist(vals = kurt, xname = 'Kurtosis', pname = ParamName, multicomp = True)
-    '''
+    moment_hist(vals = stdev, xname = 'Standard Deviation', pname = ParamName, multicomp = multi)
+    moment_hist(vals = skews, xname = 'Skew', pname = ParamName, multicomp = multi)
+    moment_hist(vals = kurt, xname = 'Kurtosis', pname = ParamName, multicomp = multi)
+
+def main():
+    burst_stats(multi = False)
     #gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
     #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
     #for j in range(2, len(multitags)):    
