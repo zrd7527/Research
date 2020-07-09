@@ -258,7 +258,7 @@ def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, factor, fax, tag):
         GetFit = fit(burst = data[i], mode = mode, n = n, llimit = pllim[0], hlimit = phlim[n-1], freq = fax[i], tag = tag, plot = False)   # Automatic fit routine
         for j in range(0, len(GetFit[1])):
             if pllim[0] < GetFit[1][j] < phlim[0] and (len(mus[0]) - 1) < i and fllim[0] < i < fhlim[0]:         # Check if component center is within given phase limits and frequency limits
-                x = burst_prop(data[i][(pllim[0]-5):pllim[1]])
+                x = burst_prop(data[i][(pllim[0]-3):pllim[1]])
                 widths[0].append(x[1])
                 amps[0].append(GetFit[0][j])
                 mus[0].append(GetFit[1][j])
@@ -744,7 +744,7 @@ def single_comp_prop(tag):
     params = comp_param(data = data, mode = 'gaussian', n = 1, pllim = PhaseLowLims, phlim = PhaseHighLims, fllim = FreqLowLims, fhlim = FreqHighLims, factor = factor, fax = fax, tag = tag)
     return(params, data, smax, fax)
 
-def burst_stats(multi):
+def burst_stats(multi, plot):
     tags = ['11B', '11C', '11D', '11E', '11F', '11G', '11H', '11I', '11J', '11K', '11M', '11N', '11O', '11Q', '12A', '12C']
     multitags = ['11A', '12B', '11E', '11K', '11O']
     stdev = []
@@ -801,13 +801,53 @@ def burst_stats(multi):
             stdev.append(moms[1][0])
             skews.append(moms[2][0])
             kurt.append(moms[3][0])
-    ParamName = 'Fluence'
-    moment_hist(vals = stdev, xname = 'Standard Deviation', pname = ParamName, multicomp = multi)
-    moment_hist(vals = skews, xname = 'Skew', pname = ParamName, multicomp = multi)
-    moment_hist(vals = kurt, xname = 'Kurtosis', pname = ParamName, multicomp = multi)
+    if plot == True:
+        ParamName = 'Fluence'
+        moment_hist(vals = stdev, xname = 'Standard Deviation', pname = ParamName, multicomp = multi)
+        moment_hist(vals = skews, xname = 'Skew', pname = ParamName, multicomp = multi)
+        moment_hist(vals = kurt, xname = 'Kurtosis', pname = ParamName, multicomp = multi)
+    else:
+        return(stdev, skews, kurt)
+
+def KS_test(vals1, vals2, plot, ind, name):
+    res = []
+    for i in range(0, len(vals1)):
+        iecdf1 = u.ecdf(values = vals1[i])
+        iecdf2 = u.ecdf(values = vals2[i])
+        if i == ind:
+            if plot == True:
+                plt.scatter(x = iecdf1[0], y = iecdf1[1])
+                plt.scatter(x = iecdf2[0], y = iecdf2[1])
+                plt.xlabel(name)
+                plt.ylabel('Cumulative Probability')
+                plt.legend(labels = ('Single', 'Multi'))
+                plt.title(name + ' ECDF')
+                plt.savefig(name[0:2] + 'ecdf')
+        diffs = []
+        for j in range(0, len(iecdf1[0])):
+            if j >= len(iecdf2[0]):
+                break
+            el = i
+            em = i
+            while iecdf1[0][j] > iecdf2[0][el]:
+                diff = iecdf1[1][j] - iecdf2[1][el]
+                diffs.append(-1*diff)
+                el += 1
+            while iecdf2[0][j] > iecdf1[0][em]:
+                diff = iecdf2[1][j] - iecdf1[1][em]
+                diffs.append(-1*diff)
+                em += 1
+                if em >= len(iecdf1[0]):
+                    break
+        res.append(np.max(diffs))
+    return(res)
 
 def main():
-    burst_stats(multi = False)
+    stats1 = burst_stats(multi = False, plot = False)
+    stats2 = burst_stats(multi = True, plot = False)
+    ks = KS_test(vals1 = stats1, vals2 = stats2, plot = False, ind = 1, name = 'Skew')
+    print(ks)
+    
     #gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
     #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
     #for j in range(2, len(multitags)):    
