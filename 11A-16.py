@@ -163,6 +163,32 @@ def high_order_moments(data, tot, order, sigma, mu, rets):
     else:
         return high_order_moments(data, tot, order, sigma, mu, rets)
 
+def SN_reducer(data, peak, SN, SNdiff):
+    '''
+        Reduces signal to noise of input data
+        Inputs:
+            data - Input data, array of arrays
+            peak - Peak flux density, not converted to real units
+            SN - Original signal to noise of data set
+            SNdiff - Difference between original and desired signal to noise
+        Returns:
+            reduced - Original burst data set with reduced signal values
+    '''
+    ReducedPeak = (peak*SNdiff)/SN
+    reduced = []
+    for i in range(0, len(data)):
+        newdat = []
+        for j in range(0, len(data[i])):
+            datdiff = ReducedPeak - data[i][j]
+            if -1*datdiff < 0 and data[i][j] < 2000:
+                newdat.append(data[i][j])
+            elif -1*datdiff < 0 and data[i][j] > 2000:
+                newdat.append(data[i][j]/5000)
+            else:
+                newdat.append(-1*datdiff)
+        reduced.append(newdat)
+    return(reduced)
+
 def mitigate(ar):
     ''' 
         Finds and removes dead channels and rfi
@@ -237,7 +263,7 @@ def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, factor, fax, tag):
         Inputs:
             data - Array of data arrays
             mode - Desired type of fit, gaussian or vonmises
-            n - number of components to be fit
+            n - Number of components to be fit
             pllim - Array of lower phase bounds of components
             phlim - Array of upper phase bounds of components
             fllim - Array of lower frequency bounds of components
@@ -575,10 +601,10 @@ def unres_comp_prop(tag, single):
             tag - Burst name of desired burst parameters, e.g. 11E
             single - Boolean, if true retrieve burst parameters as a single component
         Returns:
-            params
-            data
-            smax
-            fax
+            params - Array of component parameters for desired burst
+            data - Full data of burst after noise redusction, array of frequency arrays
+            smax - Maximum signal of burst in mJy
+            fax - Frequency axis array
     '''
     if tag == '11E':
         new = start(filename = '11E_344sec.calib.4p')
@@ -745,6 +771,18 @@ def single_comp_prop(tag):
     return(params, data, smax, fax)
 
 def burst_stats(multi, plot):
+    '''
+    Can find statistical moments of each burst in breakthrough listen original 21 burst data set
+    Inputs:
+        multi - Boolean for desired burst type, True to get moments of each component of multiple component bursts
+                and perform the same analysis for unresolved components as if they were multiple separate components
+                False to get moments of single component bursts
+        plot - Boolean for plotting, True to make histogram of moments
+    Returns:
+        stdev - Standard deviations of desired burst type, array
+        skews - Skews of desired burst type, array
+        kurt - Kurtoses of desired burst type, array
+    '''
     tags = ['11B', '11C', '11D', '11E', '11F', '11G', '11H', '11I', '11J', '11K', '11M', '11N', '11O', '11Q', '12A', '12C']
     multitags = ['11A', '12B', '11E', '11K', '11O']
     stdev = []
@@ -810,6 +848,17 @@ def burst_stats(multi, plot):
         return(stdev, skews, kurt)
 
 def KS_test(vals1, vals2, plot, ind, name):
+    '''
+    Performs multiple two-sample Kolmogorov-Smirnov tests with input value arrays and can plot one pair of ECDFs
+    Inputs:
+        vals1 - Array of first value arrays
+        vals2 - Array of second value arrays
+        plto - Boolean, True for plotting empirical cumulative distribution function (ECDF) of input value arrays as scatterplots
+        ind - Integer index of vals1 and vals2 that should be plotted
+        name - String, used for naming saved png
+    Returns:
+        res - Array of KS values from each pair of value arrays in vals1 and vals2
+    '''
     res = []
     for i in range(0, len(vals1)):
         iecdf1 = u.ecdf(values = vals1[i])
@@ -843,11 +892,26 @@ def KS_test(vals1, vals2, plot, ind, name):
     return(res)
 
 def main():
+    A = burst_11A_prop()
+    peakinit = find_peak(data = A[1])
+    peakind = peakinit[2]
+    props = burst_prop(burst = A[1][peakind])
+    print(props[2])
+    reducedA = SN_reducer(data = A[1], peak = peakinit[0], SN = props[2], SNdiff = 15)
+    redprops = burst_prop(burst = reducedA[peakind])
+    plt.plot(reducedA[peakind])
+    #plt.plot(A[1][peakind])
+    #plt.xlabel('Phase Bins')
+    #plt.ylabel('Flux Density')
+    #plt.title('11A SN Reduction Final')
+    #plt.savefig('Reduce_SN2')
+    print(redprops[2])
+    '''
     stats1 = burst_stats(multi = False, plot = False)
     stats2 = burst_stats(multi = True, plot = False)
     ks = KS_test(vals1 = stats1, vals2 = stats2, plot = False, ind = 1, name = 'Skew')
     print(ks)
-    
+    '''
     #gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
     #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
     #for j in range(2, len(multitags)):    
