@@ -163,29 +163,28 @@ def high_order_moments(data, tot, order, sigma, mu, rets):
     else:
         return high_order_moments(data, tot, order, sigma, mu, rets)
 
-def SN_reducer(data, peak, SN, SNdiff):
+def SN_reducer(data, peak, SN, desiredSN):
     '''
         Reduces signal to noise of input data
         Inputs:
             data - Input data, array of arrays
             peak - Peak flux density, not converted to real units
             SN - Original signal to noise of data set
-            SNdiff - Difference between original and desired signal to noise
+            desiredSN - Desired signal to noise
         Returns:
             reduced - Original burst data set with reduced signal values
     '''
-    ReducedPeak = (peak*SNdiff)/SN
+    #ReducedPeak = (peak*SNdiff)/SN
     reduced = []
     for i in range(0, len(data)):
         newdat = []
         for j in range(0, len(data[i])):
-            datdiff = ReducedPeak - data[i][j]
-            if -1*datdiff < 0 and data[i][j] < 2000:
+            datdiff = peak - data[i][j]
+            noisy = datdiff/((SN**2)+(desiredSN**2))
+            if datdiff <= 0:
                 newdat.append(data[i][j])
-            elif -1*datdiff < 0 and data[i][j] > 2000:
-                newdat.append(data[i][j]/5000)
             else:
-                newdat.append(-1*datdiff)
+                newdat.append(data[i][j]*noisy)
         reduced.append(newdat)
     return(reduced)
 
@@ -483,7 +482,7 @@ def data_plot(data, fax, tag, center):
     plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'lower', extent = [0,512,fax[0],fax[len(fax)-1]])
     plt.xlabel('Phase Bins')
     plt.ylabel('Frequency(MHz)')
-    plt.title('Burst ' + tag + ', Dead Channels Removed')
+    plt.title('Burst ' + tag + ', SN Reduced')#', Dead Channels Removed')
     cbar = plt.colorbar()
     cbar.set_label('Flux Density')
     if len(center) > 0:
@@ -491,7 +490,7 @@ def data_plot(data, fax, tag, center):
             plt.plot(center[i], fax, 'm')
         plt.savefig(tag + '_Data_Center')
     else:
-        plt.savefig(tag + '_Data')
+        plt.savefig(tag + '_Reduced_Data')#'_Data')
     cbar.remove()
 
 def comp_plot(data, name, fax, units, tag, labels, log):
@@ -544,6 +543,57 @@ def moment_hist(vals, xname, pname, multicomp):
         plt.title(xname + ' of Burst ' + pname)
         plt.savefig('Single_' + pname + '_' + xname[0:4])
     plt.clf()
+
+def fluence_moment_scatt(tfdmarr, moment):
+    '''
+    Creates a scatter plot of total fluence versus fluence moments (standard deviation, skew, and kurtosis)
+    Inputs:
+        tfdmarr - Burst information, array of arrays containing given tag, fluence array, data array, and moment array
+        moment - Desired moment for x axis
+    Returns:
+        Nothing
+    '''
+    moments = []
+    fluences = []
+    for i in range(0, len(tfdmarr)):
+        if tfdmarr[i][0] == '11A':
+            Amoments = []
+            Afluences = []
+            for j in range(0, len(tfdmarr[i][1])):
+                Afluences.append(np.sum(tfdmarr[i][1][j]))
+                if moment == 'SD':
+                    Amoments.append(tfdmarr[i][3][1][j])
+                elif moment == 'Skew':
+                    Amoments.append(tfdmarr[i][3][2][j])
+                elif moment == 'Kurtosis':
+                    Amoments.append(tfdmarr[i][3][3][j])
+        elif tfdmarr[i][0] == '12B':
+            Bmoments = []
+            Bfluences = []
+            for j in range(0, 2):
+                Bfluences.append(np.sum(tfdmarr[i][1][j]))
+                if moment == 'SD':
+                    Bmoments.append(tfdmarr[i][3][1][j])
+                elif moment == 'Skew':
+                    Bmoments.append(tfdmarr[i][3][2][j])
+                elif moment == 'Kurtosis':
+                    Bmoments.append(tfdmarr[i][3][3][j])
+        else:
+            fluences.append(np.sum(tfdmarr[i][1]))
+            if moment == 'SD':
+                moments.append(tfdmarr[i][3][1])
+            elif moment == 'Skew':
+                moments.append(tfdmarr[i][3][2])
+            elif moment == 'Kurtosis':
+                moments.append(tfdmarr[i][3][3])
+    plt.scatter(x = Amoments, y = Afluences, c = 'orange', marker = '*')
+    plt.scatter(x = Bmoments, y = Bfluences, c = 'black', marker = 'D')
+    plt.scatter(x = moments, y = fluences)
+    plt.legend(labels = ('Burst 11A', 'Burst 12B', 'Single Comp Bursts'))
+    plt.title('Total Fluence vs. ' + moment)
+    plt.xlabel(moment)
+    plt.ylabel('Total Fluence(Jy ms)')
+    plt.savefig('FvM' + moment)
 
 def burst_11A_prop():
     '''
@@ -788,6 +838,7 @@ def burst_stats(multi, plot):
     stdev = []
     skews = []
     kurt = []
+    tfdmarr = []
     if multi == True:
         arr = multitags
         single = False
@@ -799,35 +850,40 @@ def burst_stats(multi, plot):
     for j in range(0, len(arr)):
         if arr[j] == '11A':
             props = burst_11A_prop()
-            moms = moments(data = props[0][3])
+            fluence = props[0][3]
+            moms = moments(data = fluence)
             for k in range(0, len(moms[0])):
                 stdev.append(moms[1][k])
                 skews.append(moms[2][k])
                 kurt.append(moms[3][k])
         elif arr[j] == '12B':
             props = burst_12B_prop()
-            moms = moments(data = props[0][3][0:2])
+            fluence = props[0][3][0:2]
+            moms = moments(data = fluence)
             for k in range(2):
                 stdev.append(moms[1][k])
                 skews.append(moms[2][k])
                 kurt.append(moms[3][k])
         elif arr[j] == '11E':
             props = unres_comp_prop(tag = '11E', single = single)
-            moms = moments(data = props[0][3][0:cutoff])
+            fluence = props[0][3][0:cutoff]
+            moms = moments(data = fluence)
             for k in range(cutoff):
                 stdev.append(moms[1][k])
                 skews.append(moms[2][k])
                 kurt.append(moms[3][k])
         elif arr[j] == '11K':
             props = unres_comp_prop(tag = '11K', single = single)
-            moms = moments(data = props[0][3][0:cutoff])
+            fluence = props[0][3][0:cutoff]
+            moms = moments(data = fluence)
             for k in range(cutoff):
                 stdev.append(moms[1][k])
                 skews.append(moms[2][k])
                 kurt.append(moms[3][k])
         elif arr[j] == '11O':
             props = unres_comp_prop(tag = '11O', single = single)
-            moms = moments(data = props[0][3][0:cutoff])
+            fluence = props[0][3][0:cutoff]
+            moms = moments(data = fluence)
             for k in range(cutoff):
                 stdev.append(moms[1][0])
                 skews.append(moms[2][0])
@@ -839,13 +895,15 @@ def burst_stats(multi, plot):
             stdev.append(moms[1][0])
             skews.append(moms[2][0])
             kurt.append(moms[3][0])
+        tfdm = [arr[j], fluence, props[1], moms]
+        tfdmarr.append(tfdm)
     if plot == True:
         ParamName = 'Fluence'
         moment_hist(vals = stdev, xname = 'Standard Deviation', pname = ParamName, multicomp = multi)
         moment_hist(vals = skews, xname = 'Skew', pname = ParamName, multicomp = multi)
         moment_hist(vals = kurt, xname = 'Kurtosis', pname = ParamName, multicomp = multi)
     else:
-        return(stdev, skews, kurt)
+        return(stdev, skews, kurt, tfdmarr)
 
 def KS_test(vals1, vals2, plot, ind, name):
     '''
@@ -891,22 +949,52 @@ def KS_test(vals1, vals2, plot, ind, name):
         res.append(np.max(diffs))
     return(res)
 
-def main():
+def SN_homogenize(step, plot):
     A = burst_11A_prop()
-    peakinit = find_peak(data = A[1])
-    peakind = peakinit[2]
-    props = burst_prop(burst = A[1][peakind])
-    print(props[2])
-    reducedA = SN_reducer(data = A[1], peak = peakinit[0], SN = props[2], SNdiff = 15)
-    redprops = burst_prop(burst = reducedA[peakind])
-    plt.plot(reducedA[peakind])
-    #plt.plot(A[1][peakind])
-    #plt.xlabel('Phase Bins')
-    #plt.ylabel('Flux Density')
-    #plt.title('11A SN Reduction Final')
-    #plt.savefig('Reduce_SN2')
-    print(redprops[2])
+    Apeak = find_peak(data = A[1])
+    Apeakind = Apeak[2]
+    Aprops = burst_prop(burst = A[1][Apeakind])
+    ASN = Aprops[2]
+    print(ASN)
+    if step == 1:
+        tags = ['11E', '11K', '11O']
+        count = 0
+        for i in range(0, len(tags)):
+            init = unres_comp_prop(tag = tags[i], single = True)
+            peakinit = find_peak(data = init[1])
+            peakind = peakinit[2]
+            props = burst_prop(burst = init[1][peakind])
+            count += props[2]
+        desired = count/len(tags)
+    if step == 2:
+        tags = ['11B', '11C', '11D', '11F', '11G', '11H', '11I', '11J', '11M', '11N', '11Q', '12A', '12C']
+        count = 0
+        for i in range(0, len(tags)):
+            init = single_comp_prop(tag = tags[i])
+            peakinit = find_peak(data = init[1])
+            peakind = peakinit[2]
+            props = burst_prop(burst = init[1][peakind])
+            count += props[2]
+        desired = count/len(tags)
+        print(count/len(tags))
+    reducedA = SN_reducer(data = A[1], peak = Apeak[0], SN = ASN, desiredSN = desired)
+    if plot == True:
+        data_plot(data = reducedA, fax = A[3], tag = '11A', center = [])
+    return(reducedA)
+
+def main():
+    getSN = SN_homogenize(step = 2, plot = True)
+    newpeak = find_peak(data = getSN)
+    newprops = burst_prop(burst = getSN[newpeak[2]])
+    print(newprops[2])
     '''
+    comps = burst_stats(multi = True, plot = False)
+    singles = burst_stats(multi = False, plot = False)
+    tfdmarr = singles[3]
+    tfdmarr.append(comps[3][0])
+    tfdmarr.append(comps[3][1])
+    fluence_moment_scatt(tfdmarr = tfdmarr, moment = 'Kurtosis')
+    
     stats1 = burst_stats(multi = False, plot = False)
     stats2 = burst_stats(multi = True, plot = False)
     ks = KS_test(vals1 = stats1, vals2 = stats2, plot = False, ind = 1, name = 'Skew')
