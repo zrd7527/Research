@@ -947,41 +947,47 @@ def KS_test(vals1, vals2, plot, ind, name):
         res.append(np.max(diffs))
     return(res)
 
-def SN_homogenize(step, plot):
-    A = burst_11A_prop()
-    Apeak = find_peak(data = A[1])
-    Apeakind = Apeak[2]
-    Aprops = burst_prop(burst = A[1][Apeakind])
-    ASN = Aprops[2]
-    print(ASN)
-    if step == 1:
-        tags = ['11E', '11K', '11O']
-        count = 0
-        for i in range(0, len(tags)):
-            init = unres_comp_prop(tag = tags[i], single = True)
-            peakinit = find_peak(data = init[1])
-            peakind = peakinit[2]
-            props = burst_prop(burst = init[1][peakind])
-            count += props[2]
-        desired = count/len(tags)
-    if step == 2:
-        tags = ['11B', '11C', '11D', '11F', '11G', '11H', '11I', '11J', '11M', '11N', '11Q', '12A', '12C']
-        count = 0
-        for i in range(0, len(tags)):
-            init = single_comp_prop(tag = tags[i])
-            peakinit = find_peak(data = init[1])
-            peakind = peakinit[2]
-            props = burst_prop(burst = init[1][peakind])
-            count += props[2]
-        desired = count/len(tags)
-        print(count/len(tags))
-    reducedA = SN_reducer(data = A[1], peak = Apeak[0], SN = ASN, desiredSN = desired)
+def SN_homogenize(reducee, plot):
+    if reducee == '11A':
+        rinit = burst_11A_prop()
+        rpeak = find_peak(data = rinit[1])
+        rpeakind = rpeak[2]
+        rprops = burst_prop(burst = rinit[1][rpeakind])
+        rSN = rprops[2]
+        print(rSN)
+    elif reducee == '12B':
+        rinit = burst_12B_prop()
+        rpeak = find_peak(data = rinit[1])
+        rpeakind = rpeak[2]
+        rprops = burst_prop(burst = rinit[1][rpeakind])
+        rSN = rprops[2]
+        print(rSN)
+    else:
+        raise NameError('Tag Not Found')
+    tags1 = ['11E', '11K', '11O']
+    count = 0
+    for i in range(0, len(tags1)):
+        init = unres_comp_prop(tag = tags1[i], single = True)
+        peakinit = find_peak(data = init[1])
+        peakind = peakinit[2]
+        props = burst_prop(burst = init[1][peakind])
+        count += props[2]
+    tags2 = ['11B', '11C', '11D', '11F', '11G', '11H', '11I', '11J', '11M', '11N', '11Q', '12A', '12C']
+    for i in range(0, len(tags2)):
+        init = single_comp_prop(tag = tags2[i])
+        peakinit = find_peak(data = init[1])
+        peakind = peakinit[2]
+        props = burst_prop(burst = init[1][peakind])
+        count += props[2]
+    desired = count/(len(tags1)+len(tags2))
+    print(desired)
+    reduced = SN_reducer(data = rinit[1], peak = rpeak[0], SN = rSN, desiredSN = desired)
     if plot == True:
-        data_plot(data = reducedA, fax = A[3], tag = '11A', center = [])
-    return(reducedA)
+        data_plot(data = reduced, fax = rinit[3], tag = reducee, center = [])
+    return(reduced)
 
 def main():
-    getSN = SN_homogenize(step = 2, plot = True)
+    getSN = SN_homogenize(reducee = '12B', plot = False)
     newpeak = find_peak(data = getSN)
     newprops = burst_prop(burst = getSN[newpeak[2]])
     print(newprops[2])
