@@ -174,17 +174,15 @@ def SN_reducer(data, peak, SN, desiredSN):
         Returns:
             reduced - Original burst data set with reduced signal values
     '''
-    #ReducedPeak = (peak*SNdiff)/SN
+    SNfrac = desiredSN/SN
     reduced = []
     for i in range(0, len(data)):
         newdat = []
         for j in range(0, len(data[i])):
             datdiff = peak - data[i][j]
-            noisy = datdiff/((SN**2)+(desiredSN**2))
-            if datdiff <= 0:
-                newdat.append(data[i][j])
-            else:
-                newdat.append(data[i][j]*noisy)
+            ran = np.random.random()
+            noise = datdiff*SNfrac*ran
+            newdat.append(data[i][j]+(noise/2))
         reduced.append(newdat)
     return(reduced)
 
