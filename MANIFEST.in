@@ -1,7 +1,0 @@
-include LICENSE
-include *.md
-include MANIFEST.in
-include requirements*.txt
-recursive-include blimpy/ephemeris *.csv
-include tests
-recursive-include tests *

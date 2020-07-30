@@ -1,3 +1,0 @@
-# pep 518
-[build-system]
-requires = ["setuptools", "wheel", "numpy"]
