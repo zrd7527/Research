@@ -32,7 +32,7 @@ def find_peak(data):
         Finds peak flux value and data array at the peak flux frequency 
         Inputs:
             data - Array of data arrays
-        Outputs:
+        Returns:
             peak - Peak flux value
             burst - Data array containing peak flux value
             freq_index - Array index of input data containing peak value
@@ -50,7 +50,7 @@ def find_peak(data):
 
 def burst_prop(burst):
     '''
-        Finds burst properties of input data array
+        Finds basic burst properties of input data array (single frequency channel)
         Inputs:
             burst - Data array
         Retrns:
@@ -96,7 +96,7 @@ def moments(data):
     '''
         Finds statistical moments (mean, standard deviation, skew, kurtosis) of input distributions or data
         Inputs:
-            data - Array of distribution arrays to find moments of
+            data - Array of distribution or data arrays
         Returns:
             mus - First moment of distribution, wieghted mean array
             stdevs - Second moment of dsitribution, standard deviation array
@@ -163,6 +163,50 @@ def high_order_moments(data, tot, order, sigma, mu, rets):
     else:
         return high_order_moments(data, tot, order, sigma, mu, rets)
 
+def KS_test(vals1, vals2, plot, ind, name):
+    '''
+    Peforms multiple two-sample Kolmogorov-Smirnov tests with input value arrays and can plot one pair of ECDFs
+    Inputs:
+        vals1 - Array of first value arrays
+        vals2 - Array of second value arrays
+        plot - Boolean, true for plotting empirical cumulative distribution function (ECDF) of input value arrays as scatterplots
+        ind - Integer index of vals1 and vals2 that should be plotted
+        name - String, used for naming saved plot, x axis, and title
+    Retruns:
+        res - Array of KS values for each pair of value arrays in vals1 and vals2
+    '''
+    res = []
+    for i in range(0, len(vals1)):
+        iecdf1 = u.ecdf(values = vals1[i])
+        iecdf2 = u.ecdf(values = vals2[i])
+        if i == ind:
+            if plot == True:
+                plt.scatter(x = iecdf1[0], y = iecdf1[1])
+                plt.scatter(x = iecdf2[0], y = iecdf2[1])
+                plt.xlabel(name)
+                plt.ylabel('Cumulative Probability')
+                plt.legend(labels = ('Single', 'Multi'))
+                plt.title(name + ' ECDF')
+                plt.savefig(name[0:2] + 'ecdf')
+        diffs = []
+        for j in range(0, len(iecdf1[0])):
+            if j >= len(iecdf2[0]):
+                break
+            el = i
+            en = i
+            while iecdf1[0][j] > iecdf2[0][el]:
+                diff = iecdf1[1][j] - iecdf2[1][el]
+                diffs.append(-1*diff)
+                el += 1
+            while iecdf2[0][j] > iecdf1[0][en]:
+                diff = iecdf2[1][j] - iecdf1[1][en]
+                diffs.append(-1*diff)
+                en += 1
+                if en >= len(iecdf1[0]):
+                    break
+        res.append(np.max(diffs))
+    return(res)
+
 def SN_reducer(data, peak, SN, desiredSN):
     '''
         Reduces signal to noise of input data
@@ -172,7 +216,7 @@ def SN_reducer(data, peak, SN, desiredSN):
             SN - Original signal to noise of data set
             desiredSN - Desired signal to noise
         Returns:
-            reduced - Original burst data set with reduced signal values
+            reduced - Original burst data set with increased noise values
     '''
     SNfrac = desiredSN/SN
     reduced = []
@@ -256,7 +300,7 @@ def destroy_lower(data, index):
 
 def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, factor, fax, tag):
     ''' 
-        Finds parameters of data components
+        Finds parameters of burst components
         Inputs:
             data - Array of data arrays
             mode - Desired type of fit, gaussian or vonmises
@@ -544,12 +588,12 @@ def moment_hist(vals, xname, pname, multicomp):
 
 def fluence_moment_scatt(tfdmarr, moment):
     '''
-    Creates a scatter plot of total fluence versus fluence moments (standard deviation, skew, and kurtosis)
-    Inputs:
-        tfdmarr - Burst information, array of arrays containing given tag, fluence array, data array, and moment array
-        moment - Desired moment for x axis
-    Returns:
-        Nothing
+        Creates a scatter plot of total fluence versus fluence moments (standard deviation, skew, and kurtosis)
+        Inputs:
+            tfdmarr - Burst information, array of arrays containing given tag, fluence array, data array, and moment array
+            moment - Desired moment for x axis
+        Returns:
+            Nothing
     '''
     moments = []
     fluences = []
@@ -645,6 +689,8 @@ def burst_12B_prop():
 
 def unres_comp_prop(tag, single):
     '''
+        Returns burst parameters of possibly unresolved component bursts as either single component
+        or as the two most likely components using manually determined frequency and phase ranges
         Inputs:
             tag - Burst name of desired burst parameters, e.g. 11E
             single - Boolean, if true retrieve burst parameters as a single component
@@ -820,16 +866,17 @@ def single_comp_prop(tag):
 
 def burst_stats(multi, plot):
     '''
-    Can find statistical moments of each burst in breakthrough listen original 21 burst data set
-    Inputs:
-        multi - Boolean for desired burst type, True to get moments of each component of multiple component bursts
-                and perform the same analysis for unresolved components as if they were multiple separate components
-                False to get moments of single component bursts
-        plot - Boolean for plotting, True to make histogram of moments
-    Returns:
-        stdev - Standard deviations of desired burst type, array
-        skews - Skews of desired burst type, array
-        kurt - Kurtoses of desired burst type, array
+        Can find statistical moments of each burst in breakthrough listen original 21 burst data set
+        Inputs:
+            multi - Boolean for desired burst type, True to get moments of each component of multiple component bursts
+                    and perform the same analysis for unresolved components as if they were multiple separate components
+                    False to get moments of single component bursts
+            plot - Boolean for plotting, True to make histogram of moments
+        Returns:
+            stdev - Standard deviations of desired burst type, array
+            skews - Skews of desired burst type, array
+            kurt - Kurtoses of desired burst type, array
+            tfdmarr - Array of burst info. Each element is an array of: [tag, fluence array, data array, moment array]
     '''
     tags = ['11B', '11C', '11D', '11E', '11F', '11G', '11H', '11I', '11J', '11K', '11M', '11N', '11O', '11Q', '12A', '12C']
     multitags = ['11A', '12B', '11E', '11K', '11O']
@@ -903,51 +950,15 @@ def burst_stats(multi, plot):
     else:
         return(stdev, skews, kurt, tfdmarr)
 
-def KS_test(vals1, vals2, plot, ind, name):
-    '''
-    Performs multiple two-sample Kolmogorov-Smirnov tests with input value arrays and can plot one pair of ECDFs
-    Inputs:
-        vals1 - Array of first value arrays
-        vals2 - Array of second value arrays
-        plto - Boolean, True for plotting empirical cumulative distribution function (ECDF) of input value arrays as scatterplots
-        ind - Integer index of vals1 and vals2 that should be plotted
-        name - String, used for naming saved png
-    Returns:
-        res - Array of KS values from each pair of value arrays in vals1 and vals2
-    '''
-    res = []
-    for i in range(0, len(vals1)):
-        iecdf1 = u.ecdf(values = vals1[i])
-        iecdf2 = u.ecdf(values = vals2[i])
-        if i == ind:
-            if plot == True:
-                plt.scatter(x = iecdf1[0], y = iecdf1[1])
-                plt.scatter(x = iecdf2[0], y = iecdf2[1])
-                plt.xlabel(name)
-                plt.ylabel('Cumulative Probability')
-                plt.legend(labels = ('Single', 'Multi'))
-                plt.title(name + ' ECDF')
-                plt.savefig(name[0:2] + 'ecdf')
-        diffs = []
-        for j in range(0, len(iecdf1[0])):
-            if j >= len(iecdf2[0]):
-                break
-            el = i
-            em = i
-            while iecdf1[0][j] > iecdf2[0][el]:
-                diff = iecdf1[1][j] - iecdf2[1][el]
-                diffs.append(-1*diff)
-                el += 1
-            while iecdf2[0][j] > iecdf1[0][em]:
-                diff = iecdf2[1][j] - iecdf1[1][em]
-                diffs.append(-1*diff)
-                em += 1
-                if em >= len(iecdf1[0]):
-                    break
-        res.append(np.max(diffs))
-    return(res)
-
 def SN_homogenize(reducee, plot):
+    '''
+        Reduces signal to noise of bursts 11A and 12B to the average of the other 19 bursts in BL original data set
+        Inputs:
+            reducee - The tag of the burst having S/N reduced, e.g. '11A'
+            plot - Boolean, True to make plot of reduced S/N data
+        Returns:
+            reduced - Reduced S/N data of desired burst
+    '''
     if reducee == '11A':
         rinit = burst_11A_prop()
         rpeak = find_peak(data = rinit[1])
