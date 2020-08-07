@@ -69,7 +69,7 @@ def freq_av(data, tag, plot, xlims):
         Inputs:
             data - Array of data arrays
             tag - Burst Name, e.g. 11A
-            plot - Boolean, true to make plot
+            plot - Boolean, True to make plot
             xlims - Tuple of phase range to zoom in on plot
         Returns:
             av - Array of flux values of burst averaged in frequency
@@ -88,7 +88,7 @@ def freq_av(data, tag, plot, xlims):
         plt.xlim(xlims[0], xlims[1])
         plt.xlabel('Phase Bins')
         plt.ylabel('Flux Density')
-        plt.title('Burst ' + tag + ' Averaged in Frequency')
+        plt.title('Burst ' + tag + ', Averaged in Frequency')
         plt.savefig(tag + '_FreqAv')
     return(av)
 
@@ -169,7 +169,7 @@ def KS_test(vals1, vals2, plot, ind, name):
         Inputs:
             vals1 - Array of first value arrays
             vals2 - Array of second value arrays
-            plot - Boolean, true for plotting empirical cumulative distribution function (ECDF) of input value arrays as scatterplots
+            plot - Boolean, True for plotting empirical cumulative distribution function (ECDF) of input value arrays as scatterplots
             ind - Integer index of vals1 and vals2 that should be plotted
             name - String, used for naming saved plot, x axis, and title
         Retruns:
@@ -413,7 +413,7 @@ def fit(burst, mode, n, llimit, hlimit, freq, tag, plot):
             hlimit - Integer, upper limit of phase range to be fit
             freq - Frequency of data array, for plotting
             tag - Burst name, e.g. 11A, for plotting
-            plot - Boolean, true to make plot and see accuracy of fit
+            plot - Boolean, True to make plot and see accuracy of fit
         Returns:
             amp - Array of component amplitudes
             mu - Array of component centers
@@ -445,7 +445,7 @@ def lnorm_fit(xin, burst, n, plot, dattype, units, fax, comp):
             xin - Array of frequency range to be fit
             burst - Data array to be fit
             n - Integer number of curve fits desired, fit is better with greater n
-            plot - Boolean, true to make plot with data and fit
+            plot - Boolean, True to make plot with data and fit
             dattype - Type of data being plotted, string used for y axis label and title
             units - Unit of data type, string used for y axis label
             fax - Frequency axis of data array
@@ -511,7 +511,7 @@ def gauss_lnorm_fit(xin, burst, dattype, units, fax, comp):
     plt.title('Gauss Plus LogNormal fit to ' + dattype + ' of ' + comp)
     plt.savefig(comp[0:4] + comp[-1] + '_GaLNorm_Fit')
 
-def data_plot(data, fax, tag, center):
+def data_plot(data, fax, tag, center, RSN):
     ''' 
         Makes 3D data plot of entire data file, x is phase, y is frequency, z is flux density
         Inputs:
@@ -519,26 +519,36 @@ def data_plot(data, fax, tag, center):
             fax - Frequency axis array
             tag - Burst name, e.g. 11A
             center - Array of component centers from comp_param(), input empty array if no center
+            RSN - Boolean, True if S/N of burst is reduced
         Returns:
             nothing
     '''
     plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'lower', extent = [0,512,fax[0],fax[len(fax)-1]])
     plt.xlabel('Phase Bins')
     plt.ylabel('Frequency(MHz)')
-    plt.title('Burst ' + tag + ', SN Reduced')#', Dead Channels Removed')
+    if RSN == True:
+        plt.title('Burst ' + tag[0:3] + ', SN Reduced')
+    else:
+        plt.title('Burst ' + tag + ', Dead Channels Removed')
     cbar = plt.colorbar()
     cbar.set_label('Flux Density')
     if len(center) > 0:
         for i in range(0, len(center)):
             plt.plot(center[i], fax, 'm')
-        plt.savefig(tag + '_Data_Center')
+        if RSN == True:
+            plt.savefig(tag + '_Reduced_Data_Center')
+        else:
+            plt.savefig(tag + '_Data_Center')
     else:
-        plt.savefig(tag + '_Reduced_Data')#'_Data')
+        if RSN == True:
+            plt.savefig(tag + '_Reduced_Data')
+        else:
+            plt.savefig(tag + '_Data')
     cbar.remove()
 
-def comp_plot(data, name, fax, units, tag, labels, log):
+def comp_plot(data, name, fax, units, tag, labels, log, RSN):
     ''' 
-        Makes 2D plot of component parameters vs frequency
+        Makes 2D plot of a component parameter vs frequency
         Inputs:
             data - Array of component parameters
             name - Name of parameter to be plotted, e.g. Amplitude
@@ -546,7 +556,8 @@ def comp_plot(data, name, fax, units, tag, labels, log):
             units - String, y axis units
             tag - Burst name, e.g. 11A
             labels - Component name list for legend
-            log - Boolean, true for log plot
+            log - Boolean, True for log plot
+            RSN - Boolean, True if S/N of burst is reduced
         Returns:
             nothing
     '''
@@ -563,8 +574,12 @@ def comp_plot(data, name, fax, units, tag, labels, log):
     else:
         plt.xlabel('Frequency(MHz)')
         plt.ylabel(name + '(' + units + ')')
-        plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
-        plt.savefig(tag + '_' + name)
+        if RSN == True:
+            plt.title(name + ' vs. Frequency of Components of Reduced S/N Burst ' + tag[0:3])
+            plt.savefig(tag + '_Reduced_' + name)
+        else:
+            plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
+            plt.savefig(tag + '_' + name)
 
 def moment_hist(vals, xname, pname, multicomp):
     '''
@@ -587,12 +602,14 @@ def moment_hist(vals, xname, pname, multicomp):
         plt.savefig('Single_' + pname + '_' + xname[0:4])
     plt.clf()
 
-def fluence_moment_scatt(tfdmarr, moment):
+def fluence_moment_scatt(tfdmarr, moment, RSN, singleA):
     '''
         Creates a scatter plot of total fluence versus fluence moments (standard deviation, skew, and kurtosis)
         Inputs:
             tfdmarr - Burst information, array of arrays containing given tag, fluence array, data array, and moment array
-            moment - Desired moment for x axis
+            moment - Desired moment to plot on x axis
+            RSN - Boolean, True if S/N of bursts 11A and 12B are reduced
+            singleA - Boolean, True if burst 11A is fit with a single component
         Returns:
             Nothing
     '''
@@ -613,7 +630,7 @@ def fluence_moment_scatt(tfdmarr, moment):
         elif tfdmarr[i][0] == '12B':
             Bmoments = []
             Bfluences = []
-            for j in range(0, 2):
+            for j in range(0, len(tfdmarr[i][1])):
                 Bfluences.append(np.sum(tfdmarr[i][1][j]))
                 if moment == 'SD':
                     Bmoments.append(tfdmarr[i][3][1][j])
@@ -632,11 +649,20 @@ def fluence_moment_scatt(tfdmarr, moment):
     plt.scatter(x = Amoments, y = Afluences, c = 'orange', marker = '*')
     plt.scatter(x = Bmoments, y = Bfluences, c = 'black', marker = 'D')
     plt.scatter(x = moments, y = fluences)
-    plt.legend(labels = ('Burst 11A', 'Burst 12B', 'Single Comp Bursts'))
-    plt.title('Total Fluence vs. ' + moment)
     plt.xlabel(moment)
     plt.ylabel('Total Fluence(Jy ms)')
-    plt.savefig('FvM' + moment)
+    if RSN == True:
+        plt.title('Total Fluence vs. ' + moment + ' with S/N of Bursts 11A and 12B Reduced')
+        if singleA == True:
+            plt.legend(labels = ('Burst 11A, Single Comp', 'Burst 12B', 'Single Comp Bursts'))
+            plt.savefig('Reduced1_FvM' + moment)
+        else:
+            plt.legend(labels = ('Burst 11A', 'Burst 12B', 'Single Comp Bursts'))
+            plt.savefig('Reduced_FvM' + moment)
+    else:
+        plt.title('Total Fluence vs. ' + moment)
+        plt.legend(labels = ('Burst 11A', 'Burst 12B', 'Single Comp Bursts'))
+        plt.savefig('FvM' + moment)
 
 def burst_11A_prop():
     '''
@@ -995,36 +1021,56 @@ def SN_homogenize(reducee, plot):
     desired = count/(len(tags1)+len(tags2))
     print('Desired S/N: ' + str(desired))
     reduced = SN_reducer(data = rinit[1], peak = rpeak[0], SN = rSN, desiredSN = desired)
+    newpeak = find_peak(data = reduced)
+    newprops = burst_prop(burst = reduced[newpeak[2]])
+    print('New S/N: ' + str(newprops[2]))
     if plot == True:
         data_plot(data = reduced, fax = rinit[3], tag = reducee, center = [])
-    return(reduced)
+    return(np.array(reduced))
+
+def reduced_SN_props(singleA):
+    Ainit = burst_11A_prop()
+    Apeak = find_peak(data = Ainit[1])
+    Apeakind = Apeak[2]
+    Aprops = burst_prop(burst = Ainit[1][Apeakind])
+    ASN = Aprops[2]
+    reducedA = SN_reducer(data = Ainit[1], peak = Apeak[0], SN = ASN, desiredSN = 13.3)
+    if singleA == True:
+        reducedAprops = comp_param(data = np.array(reducedA), mode = 'gaussian', n = 1, pllim = [350, 425, 0, 0], phlim = [420, 0, 0, 0], fllim = [10, 0, 0, 0], \
+                fhlim = [55, 0, 0, 0], factor = (Apeak[0]/Ainit[2])*40, fax = Ainit[3], tag = '11A')
+        tfdmA = ['11A', [reducedAprops[3][0]], reducedA, moments(data = [reducedAprops[3][0]])]
+    else:
+        reducedAprops = comp_param(data = np.array(reducedA), mode = 'gaussian', n = 3, pllim = [350, 380, 395, 425], phlim = [370, 390, 420, 0], fllim = [10, 27, 33, 0], \
+                fhlim = [30, 45, 48, 0], factor = (Apeak[0]/Ainit[2])*40, fax = Ainit[3], tag = '11A')
+        tfdmA = ['11A', reducedAprops[3][0:3], reducedA, moments(data = reducedAprops[3][0:3])]
+    Binit = burst_12B_prop()
+    Bpeak = find_peak(data = Binit[1])
+    Bpeakind = Bpeak[2]
+    Bprops = burst_prop(burst = Binit[1][Bpeakind])
+    BSN = Bprops[2]
+    reducedB = SN_reducer(data = Binit[1], peak = Bpeak[0], SN = BSN, desiredSN = 13.3)
+    reducedBprops = comp_param(data = np.array(reducedB), mode = 'gaussian', n =1, pllim = [65, 115, 0, 0], phlim = [105, 0, 0, 0], fllim = [11, 0, 0, 0], fhlim = [42, 0, 0, 0], \
+            factor = (Bpeak[0]/Binit[2])*40, fax = Binit[3], tag = '12B')
+    tfdmB = ['12B', [reducedBprops[3][0]], reducedB, moments(data = [reducedBprops[3][0]])]
+    fvm = burst_stats(multi = False, plot = False)
+    fvm[3].append(tfdmA)
+    fvm[3].append(tfdmB)
+    fluence_moment_scatt(tfdmarr = fvm[3], moment = 'SD', RSN = True, singleA = singleA)
+    plt.clf()
+    fluence_moment_scatt(tfdmarr = fvm[3], moment = 'Skew', RSN = True, singleA = singleA)
+    plt.clf()
+    fluence_moment_scatt(tfdmarr = fvm[3], moment = 'Kurtosis', RSN = True, singleA = singleA)
+    plt.clf()
 
 def main():
-    getSN = SN_homogenize(reducee = '12B', plot = False)
-    newpeak = find_peak(data = getSN)
-    newprops = burst_prop(burst = getSN[newpeak[2]])
-    print('New S/N: ' + str(newprops[2]))
+    reduced_SN_props(singleA = True)
+    #data_plot(data = reducedA[0], fax = reducedA[3], tag = '11A-1', center = reducedAprops1[1], RSN = True)
+    #comp_plot(data = [reducedBprops[3][0]], name = 'Fluence', fax = reducedB[3], units = 'Jy ms', tag = '12B, labels = ('Comp1'), log = False, RSN = True)
     '''
-    comps = burst_stats(multi = True, plot = False)
-    singles = burst_stats(multi = False, plot = False)
-    tfdmarr = singles[3]
-    tfdmarr.append(comps[3][0])
-    tfdmarr.append(comps[3][1])
-    fluence_moment_scatt(tfdmarr = tfdmarr, moment = 'Kurtosis')
-    
     stats1 = burst_stats(multi = False, plot = False)
     stats2 = burst_stats(multi = True, plot = False)
     ks = KS_test(vals1 = stats1, vals2 = stats2, plot = False, ind = 1, name = 'Skew')
     print(ks)
     '''
-    #gauss_lnorm_fit(xin = x, burst = fluence, dattype = 'Fluence', units = '(Jy ms)', fax = fax, comp = 'Component 2')
-    #fit(burst = params[3][3], mode = 'gaussian', n = 1, llimit = 30, hlimit = 64, freq = 6000, tag = '11A', plot = True)
-    #for j in range(2, len(multitags)):    
-        #props = unres_comp_prop(tag = multitags[j], single = True)
-        #params = props[0]
-        #labels = ('Comp 1')#, 'Comp 2', 'Comp 3', 'Comp 4')
-        #data_plot(data = props[1], fax = props[3], tag = tags2[j], center = params[1])
-        #comp_plot(data = [params[3][0]], name = 'Fluence', fax = props[3], units = 'Jy ms', tag = multitags[j], labels = labels, log = False)
-        #plt.clf()
 
 main()
