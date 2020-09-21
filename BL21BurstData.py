@@ -1029,6 +1029,14 @@ def SN_homogenize(reducee, plot):
     return(np.array(reduced))
 
 def reduced_SN_props(singleA):
+    '''
+        Reduces the S/N ratio of bursts 11A and 12B then finds fluence and moments of the fluence distribution
+        Inputs:
+            SingleA - Boolean, True for burst 11A to be fit as a single component burst and false for it to be
+                      fit as a 3 component burst. Burst 12B is always fit with a single component for reduced S/N
+        Returns:
+            nothing
+    '''
     Ainit = burst_11A_prop()
     Apeak = find_peak(data = Ainit[1])
     Apeakind = Apeak[2]
