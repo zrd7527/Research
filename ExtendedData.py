@@ -28,9 +28,28 @@ def load(filename, info, tstart, tstop):
     return(cleandata)
 
 def get_freqs(fch1, nchan, foff):
+    '''
+        Uses data file info to create an array of frequencies
+        Inputs:
+            fch1 - Frequency of channel 1
+            nchan - Number of channels in data file
+            foff - Off frequency range
+        Returns:
+            Array of frequencies for each frequency channel in data
+    '''
     return(fch1 + np.arange(nchan)*foff)
 
 def dedisperse(data, dm, freqs, tsamp):
+    '''
+        Dedisperses data by input value
+        Inputs:
+            data - 2D data array
+            dm - Desired dispersion measure to dedisperse to
+            freqs - Array of frequencies of data channels
+            tsamp - Length of time of each time bin
+        Returns:
+            dedispersed - Dedispersed 2D data
+    '''
     delay_bins = []
     dedispersed = []
     for i in range(0, len(freqs)):
@@ -41,7 +60,7 @@ def dedisperse(data, dm, freqs, tsamp):
         dedispersed[j] = np.concatenate([data[j][-delay_bins[j]:], data[j][:-delay_bins[j]]])
     return(dedispersed)
 
-def data_plot(data, name, tag):
+def data_plot(data, name, tag, fax):
     '''
         Makes waterfall plot of input data
         Inputs:
@@ -51,14 +70,17 @@ def data_plot(data, name, tag):
         Returns:
             nothing
     '''
-    plt.imshow(data, origin = 'lower', interpolation = 'nearest', aspect = 'auto')
-    plt.ylabel('Frequency Bins')
+    plt.imshow(data, origin = 'lower', interpolation = 'nearest', aspect = 'auto', vmin = 0, vmax = 50, extent = [0, 200, fax[0], fax[len(fax)-1]])
+    cbar = plt.colorbar()
+    cbar.set_label('Flux Density')
+    plt.ylabel('Frequency (MHz)')
     plt.xlabel('Time Bins')
+    plt.title(name + ' Data of Burst ' + tag)
     plt.savefig(name + '_' + tag)
 
 def main():
-    data1 = load(filename = 'spliced_guppi_57991_49905_DIAG_FRB121102_0011.gpuspec.0001.8.fil', info = False, tstart = 46000, tstop = 47000)
-    freqs = get_freqs(fch1 = 9313.78173828125, nchan = 14848, foff = -0.3662109375)
+    data1 = load(filename = 'spliced_guppi_57991_49905_DIAG_FRB121102_0011.gpuspec.0001.8.fil', info = False, tstart = 46450, tstop = 46650)
+    freqs = get_freqs(fch1 = 9313.78173828125, nchan = 10924, foff = -0.3662109375)        #nchan = 14848?1
     dedisdata = dedisperse(data = data1, dm = 558, freqs = freqs, tsamp = 0.0003495253333333333)
-    data_plot(data = dedisdata, name = 'Dedispersed', tag = '11A')
+    data_plot(data = dedisdata, name = '121102-Filterbank', tag = '11A', fax = freqs)
 main()
