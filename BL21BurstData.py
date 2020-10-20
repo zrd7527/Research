@@ -1071,7 +1071,10 @@ def reduced_SN_props(singleA):
     plt.clf()
 
 def main():
-    reduced_SN_props(singleA = True)
+    print('Initializing BL21 Burst Code')
+    A = start(filename = '11A_16sec.calib.4p')
+    fit(burst = A[1][30], mode = 'gaussian', n = 2, llimit = 325, hlimit = 475, freq = np.round(A[2][30]), tag = '11A', plot = True)
+    #reduced_SN_props(singleA = True)
     #data_plot(data = reducedA[0], fax = reducedA[3], tag = '11A-1', center = reducedAprops1[1], RSN = True)
     #comp_plot(data = [reducedBprops[3][0]], name = 'Fluence', fax = reducedB[3], units = 'Jy ms', tag = '12B, labels = ('Comp1'), log = False, RSN = True)
     '''
