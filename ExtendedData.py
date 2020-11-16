@@ -61,17 +61,20 @@ def dedisperse(data, dm, freqs, tsamp):
         dedispersed[j] = np.concatenate([data[j][-delay_bins[j]:], data[j][:-delay_bins[j]]])
     return(dedispersed)
 
-def data_plot(data, name, tag, fax):
+def data_plot(data, name, tag, fax, vmax, ext):
     '''
         Makes waterfall plot of input data
         Inputs:
             data - Array of data arrays
-            name - save name
-            tag - save tag
+            name - Save name
+            tag - Save tag
+            fax - Array of frequency axis values
+            vmax - Maximum data plot value (max colorbar value as well)
+            ext - Maximum extent of time bins on x-axis
         Returns:
             nothing
     '''
-    plt.imshow(data, origin = 'lower', interpolation = 'nearest', aspect = 'auto', vmin = 0, vmax = 170*20, extent = [0, 200, fax[0], fax[len(fax)-1]])
+    plt.imshow(data, origin = 'lower', interpolation = 'nearest', aspect = 'auto', vmin = 0, vmax = vmax, extent = [0, ext, fax[0], fax[len(fax)-1]])
     cbar = plt.colorbar()
     cbar.set_label('Flux Density')
     plt.ylabel('Frequency (MHz)')
@@ -80,6 +83,17 @@ def data_plot(data, name, tag, fax):
     plt.savefig(name + '_' + tag)
 
 def fscrunch(data, freqs, nchan, factor):
+    '''
+    Scrunches data along frequency axis to average data down for more visible plotting and analysis
+    Inputs:
+        data - Array of data arrays
+        freqs - Frequency axis array
+        nchan - Original number of frequency channels
+        factor - Number to divide nchan by to average over frequency
+    Returns:
+        retval - Averaged data, array of arrays
+        newfreq - New frequency axis array
+    '''
     newnchan = nchan//factor
     newfreq = np.zeros(newnchan)
     for k in range(newnchan):
@@ -110,17 +124,29 @@ def fluence_data(namefile):
             bursts.append([tag, filename, tsamp])
     freqs = get_freqs(fch1 = 8161.132568359375, nchan = 10924, foff = -0.3662109375)    #nchan = 14848? fch1 = 9313.78173828125?
     for i in range(0, len(bursts)):
-        data = load(filename = bursts[i][1], info = False, tstart = bursts[i][2]-200, tstop = bursts[i][2]+200)
+        if bursts[i][0][0:2] != '11':
+            data = load(filename = bursts[i][1], info = False, tstart = bursts[i][2]-5000, tstop = bursts[i][2]+5000)
+            ext = 10000
+        else:
+            data = load(filename = bursts[i][1], info = False, tstart = bursts[i][2]-200, tstop = bursts[i][2]+200)
+            ext = 400
         dedisdata = dedisperse(data = data, dm = 558, freqs = freqs, tsamp = 0.0003495253333333333)
-        scrunchdat, fax = fscrunch(data = dedisdata[:10880], freqs = freqs[:10880], nchan = 10880, factor = 170)     #Original data has nchan = 10924
+        if len(bursts[i][0]) > 3:
+            scrunchdat, fax = fscrunch(data = dedisdata[:10912], freqs = freqs[:10912], nchan = 10912, factor = 682)
+            data_plot(data = scrunchdat, name = '121102-Filterbank', tag = bursts[i][0], fax = fax, vmax = 170*7, ext = ext)
+        else:
+            scrunchdat, fax = fscrunch(data = dedisdata[:10880], freqs = freqs[:10880], nchan = 10880, factor = 170)     #Original data has nchan = 10924
+            data_plot(data = scrunchdat, name = '121102-Filterbank', tag = bursts[i][0], fax = fax, vmax = 170*20, ext = ext)
         #peak = BL21.find_peak(data = scrunchdat)
         #params = BL21.comp_param(data = scrunchdat, mode = 'gaussian', n = 1, pllim = [50, 105, 0, 0], phlim = [100, 0, 0, 0], fllim = [5, 0, 0, 0], fhlim = [40, 0, 0, 0], factor = 78.3, fax = fax, tag = bursts[i][0])
         #BL21.comp_plot(data = [params[3][0]], name = 'Fluence', fax = fax, units = 'Jy ms', tag = 'FB' + bursts[i][0], labels = ('F'), log = False, RSN = False)
         #BL21.fit(burst = scrunchdat[14], mode = 'gaussian', n = 1, llimit = 50, hlimit = 100, freq = fax[14], tag = '11A', plot = True)
-        data_plot(data = scrunchdat, name = '121102-Filterbank', tag = bursts[i][0], fax = fax)
         plt.clf()
 
 def main():
+    #files = ["spliced_guppi_57991_49905_DIAG_FRB121102_0011.gpuspec.0001.8.fil", "spliced_guppi_57991_51723_DIAG_FRB121102_0012.gpuspec.0001.8.fil", "spliced_guppi_57991_53535_DIAG_FRB121102_0013.gpuspec.0001.8.fil", "spliced_guppi_57991_55354_DIAG_FRB121102_0014.gpuspec.0001.8.fil", "spliced_guppi_57991_57166_DIAG_FRB121102_0015.gpuspec.0001.8.fil", "spliced_guppi_57991_58976_DIAG_FRB121102_0016.gpuspec.0001.8.fil", "spliced_guppi_57991_60787_DIAG_FRB121102_0017.gpuspec.0001.8.fil", "spliced_guppi_57991_62598_DIAG_FRB121102_0018.gpuspec.0001.8.fil", "spliced_guppi_57991_64409_DIAG_FRB121102_0019.gpuspec.0001.8.fil", "spliced_guppi_57991_66219_DIAG_FRB121102_0020.gpuspec.0001.8.fil"]
+    #for i in range(len(files)):
+    #dat = load(filename = "spliced_guppi_57991_66219_DIAG_FRB121102_0020.gpuspec.0001.8.fil", info = True, tstart = 0, tstop = 1000)
     fluence_data(namefile = 'full_data.txt')
 
 main()
