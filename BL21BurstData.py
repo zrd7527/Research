@@ -511,7 +511,7 @@ def gauss_lnorm_fit(xin, burst, dattype, units, fax, comp):
     plt.title('Gauss Plus LogNormal fit to ' + dattype + ' of ' + comp)
     plt.savefig(comp[0:4] + comp[-1] + '_GaLNorm_Fit')
 
-def data_plot(data, fax, tag, center, RSN):
+def data_plot(data, fax, tag, center, RSN, vmax, ext):
     ''' 
         Makes 3D data plot of entire data file, x is phase, y is frequency, z is flux density
         Inputs:
@@ -520,10 +520,15 @@ def data_plot(data, fax, tag, center, RSN):
             tag - Burst name, e.g. 11A
             center - Array of component centers from comp_param(), input empty array if no center
             RSN - Boolean, True if S/N of burst is reduced
+            vmax - Maximum value of data plot, 0 if automatic interpolation desired
+            ext - Length of horizontal axis
         Returns:
             nothing
     '''
-    plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'lower', extent = [0,512,fax[0],fax[len(fax)-1]])
+    if vmax > 0:
+        plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'lower', vmin = 0, vmax = vmax, extent = [0, ext, fax[0], fax[len(fax)-1]])
+    else:
+        plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'lower', extent = [0,512,fax[0],fax[len(fax)-1]])
     plt.xlabel('Phase Bins')
     plt.ylabel('Frequency(MHz)')
     if RSN == True:
