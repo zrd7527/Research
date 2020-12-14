@@ -107,7 +107,38 @@ def fscrunch(data, freqs, nchan, factor):
             retval[k][l] = tot
     return(retval, newfreq)
 
-def fluence_data(namefile):
+def bscrunch(data, nbins, factor):
+    '''
+    Scrunches data along time axis similarly to fscrunch()
+    Inputs:
+        data - Array of data arrays
+        nbins - Number of time bins in each data array
+        factor - Number to divide nbins by
+    Returns:
+        retval - Data averaged along time dimension
+    '''
+    newnbins = nbins//factor
+    retval = np.zeros(shape = (len(data), len(np.arange(start = 0, stop = nbins, step = factor))))
+    counts = np.zeros_like(retval)
+    for i in range(factor):
+        arr = data[:, i:nbins:factor]
+        count = np.ones_like(arr)
+        length = np.shape(arr)[1]
+        retval[:, :length] += arr
+        counts[:, :length] += count
+    retval = retval/counts
+    return(retval)
+
+def extract_bursts(namefile):
+    '''
+    Uses input text file of burst file and time locations to pull out bursts, average in frequency and time if necessary,
+    plot if desired, then return the data array
+    Inputs:
+        namefile - Text file containing columns of burst tags, data file, TOA in time bins from start of file, and DM
+                   Also includes peak frequency and width of burst if needed for fitting
+    Returns:
+        None
+    '''
     read_data = open(namefile, 'r')
     bursts = []
     while True:
@@ -121,24 +152,33 @@ def fluence_data(namefile):
             tag = str(splitline[0])
             filename = str(splitline[1])
             tsamp = int(splitline[2])
-            bursts.append([tag, filename, tsamp])
-    freqs = get_freqs(fch1 = 8161.132568359375, nchan = 10924, foff = -0.3662109375)    #nchan = 14848? fch1 = 9313.78173828125?
+            DM = float(splitline[3])
+            width = float(splitline[4])
+            nupeak = float(splitline[5])
+            bursts.append([tag, filename, tsamp, DM, width, nupeak])
+    freqs = get_freqs(fch1 = 8161.132568359375, nchan = 10924, foff = -0.3662109375)    #nchan = 14848? fch1 = 9313.78173828125? from file info
     for i in range(0, len(bursts)):
-        if bursts[i][0][0:2] != '11':
-            data = load(filename = bursts[i][1], info = False, tstart = bursts[i][2]-5000, tstop = bursts[i][2]+5000)
-            ext = 10000
-        else:
-            data = load(filename = bursts[i][1], info = False, tstart = bursts[i][2]-200, tstop = bursts[i][2]+200)
-            ext = 400
-        dedisdata = dedisperse(data = data, dm = 558, freqs = freqs, tsamp = 0.0003495253333333333)
-        if len(bursts[i][0]) > 3:
-            scrunchdat, fax = fscrunch(data = dedisdata[:10912], freqs = freqs[:10912], nchan = 10912, factor = 682)
-            data_plot(data = scrunchdat, name = '121102-Filterbank', tag = bursts[i][0], fax = fax, vmax = 170*7, ext = ext)
+        data = load(filename = bursts[i][1], info = False, tstart = bursts[i][2]-200, tstop = bursts[i][2]+200)
+        ext = 400
+        dedisdata = dedisperse(data = data, dm = bursts[i][3], freqs = freqs, tsamp = 0.0003495253333333333)
+        if len(bursts[i][0]) > 3:   #Naming convention for low S/N bursts in first and second file
+            fscrunchdat, fax = fscrunch(data = dedisdata[:10912], freqs = freqs[:10912], nchan = 10912, factor = 682)
+            scrunchdat = bscrunch(data = fscrunchdat, nbins = ext, factor = 4)
+            data_plot(data = scrunchdat, name = '121102-Filterbank', tag = bursts[i][0], fax = fax, vmax = 170*8, ext = ext)
+        elif int(bursts[i][0][0:2]) > 12:   #Naming convention for bursts after second file
+            fscrunchdat, fax = fscrunch(data = dedisdata[:10912], freqs = freqs[:10912], nchan = 10912, factor = 682)
+            scrunchdat = bscrunch(data = fscrunchdat, nbins = ext, factor = 4)
+            data_plot(data = scrunchdat, name = '121102-Filterbank', tag = bursts[i][0], fax = fax, vmax = 170*8, ext = ext)
         else:
             scrunchdat, fax = fscrunch(data = dedisdata[:10880], freqs = freqs[:10880], nchan = 10880, factor = 170)     #Original data has nchan = 10924
             data_plot(data = scrunchdat, name = '121102-Filterbank', tag = bursts[i][0], fax = fax, vmax = 170*20, ext = ext)
         #peak = BL21.find_peak(data = scrunchdat)
-        #params = BL21.comp_param(data = scrunchdat, mode = 'gaussian', n = 1, pllim = [50, 105, 0, 0], phlim = [100, 0, 0, 0], fllim = [5, 0, 0, 0], fhlim = [40, 0, 0, 0], factor = 78.3, fax = fax, tag = bursts[i][0])
+        '''
+        if bursts[i][0] == '11B2':
+            params = BL21.comp_param(data = scrunchdat, mode = 'gaussian', n = 1, pllim = [200, 251, 0, 0], phlim = [250, 0, 0, 0], fllim = [5, 0, 0, 0], fhlim = [11, 0, 0, 0], factor = 78.3, fax = fax, tag = bursts[i][0])
+            plt.clf()
+            BL21.data_plot(data = scrunchdat, tag = bursts[i][0], fax = fax, center = params[1], RSN = False, vmax = 170*9, ext = ext)
+        '''
         #BL21.comp_plot(data = [params[3][0]], name = 'Fluence', fax = fax, units = 'Jy ms', tag = 'FB' + bursts[i][0], labels = ('F'), log = False, RSN = False)
         #BL21.fit(burst = scrunchdat[14], mode = 'gaussian', n = 1, llimit = 50, hlimit = 100, freq = fax[14], tag = '11A', plot = True)
         plt.clf()
@@ -147,6 +187,6 @@ def main():
     #files = ["spliced_guppi_57991_49905_DIAG_FRB121102_0011.gpuspec.0001.8.fil", "spliced_guppi_57991_51723_DIAG_FRB121102_0012.gpuspec.0001.8.fil", "spliced_guppi_57991_53535_DIAG_FRB121102_0013.gpuspec.0001.8.fil", "spliced_guppi_57991_55354_DIAG_FRB121102_0014.gpuspec.0001.8.fil", "spliced_guppi_57991_57166_DIAG_FRB121102_0015.gpuspec.0001.8.fil", "spliced_guppi_57991_58976_DIAG_FRB121102_0016.gpuspec.0001.8.fil", "spliced_guppi_57991_60787_DIAG_FRB121102_0017.gpuspec.0001.8.fil", "spliced_guppi_57991_62598_DIAG_FRB121102_0018.gpuspec.0001.8.fil", "spliced_guppi_57991_64409_DIAG_FRB121102_0019.gpuspec.0001.8.fil", "spliced_guppi_57991_66219_DIAG_FRB121102_0020.gpuspec.0001.8.fil"]
     #for i in range(len(files)):
     #dat = load(filename = "spliced_guppi_57991_66219_DIAG_FRB121102_0020.gpuspec.0001.8.fil", info = True, tstart = 0, tstop = 1000)
-    fluence_data(namefile = 'full_data.txt')
+    extract_bursts(namefile = 'full_data.txt')
 
 main()
