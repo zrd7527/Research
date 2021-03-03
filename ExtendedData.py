@@ -180,64 +180,81 @@ def extract_bursts(namefile, plot):
         plt.clf()
     return(bursts)
 
-def get_fluence(bursts, plot):
+def get_fluence(bursts, plot_center):
     '''
     Takes Input array of burst data arrays and uses BL21BurstData.py file to find fluence, width, amplitude, and center of each burst
     Inputs:
         bursts - Array of arrays; each array element contains all information for that burst
-        plot - Boolean, True to plot data with overlayed gaussian center
+        plot_center - Boolean, True to plot data with overlayed gaussian center
     Reurns:
         None
     '''
+    tfdmarr = []
     for i in range(len(bursts)):
-        tag = bursts[i][0]
-        tsamp = bursts[i][2]
-        nupeakGHz = bursts[i][5]
-        fax = bursts[i][6]
-        data = bursts[i][7]
-        nudiff = 10000
-        nupeakind = 0
-        if tag == "11A1":
-            peak, burst, ind = BL21.find_peak(data)
-            print(str(fax[ind]) + " " + str(nupeakGHz))
-            plt.plot(burst)
-            plt.xlabel("Time Bins")
-            plt.ylabel("Flux")
-            plt.title("Burst 11A1 at " + str(nupeakGHz) + " (GHz)")
-            plt.savefig("11A1_peak")
-            plt.clf()
-        elif tag == "11B2":
-            peak, burst, ind = BL21.find_peak(data)
-            print(str(fax[ind]) + " " + str(nupeakGHz))
-            plt.plot(burst)
-            plt.xlabel("Time Bins")
-            plt.ylabel("Flux")
-            plt.title("Burst 11B2 at " + str(nupeakGHz) + " (GHz)")
-            plt.savefig("11B2_peak")
-        else:
+        if len(bursts[i][0]) < 4:
             pass
-        '''
-        for j in range(len(fax)):
-            newdiff = fax[j] - nupeakMHz
-            if np.abs(newdiff) < nudiff:
-                nudiff = np.abs(newdiff)
-                nupeakind = j
-        pllim = [100, 301, 0, 0]
-        phlim = [300, 0, 0, 0]
-        fllim = [nupeakind-2, 0, 0, 0]
-        fhlim = [nupeakind+2, 0, 0, 0]
-        params = BL21.comp_param(data = data, mode = 'gaussian', n = 1, pllim = pllim, phlim = phlim, fllim = fllim, fhlim = fhlim, factor = 78.3, fax = fax, tag = tag)
-        if plot == True:
-            BL21.data_plot(data = scrunchdat, tag = bursts[i][0], fax = fax, center = params[1], RSN = False, vmax = 170*9, ext = ext)
-        plt.clf()
-        '''
-    #BL21.comp_plot(data = [params[3][0]], name = 'Fluence', fax = fax, units = 'Jy ms', tag = 'FB' + bursts[i][0], labels = ('F'), log = False, RSN = False)
+        else:
+            tag = bursts[i][0]
+            tfdmarr.append(tag)
+            print(tag)
+            tsamp = bursts[i][2]
+            nupeakGHz = bursts[i][5]
+            fax = bursts[i][6]
+            data = bursts[i][7]
+            peak, burst, nupeakind, tbin = BL21.find_peak(data)
+            pllim = [tbin-5, tbin+6, 0, 0]
+            phlim = [tbin+5, 0, 0, 0]
+            if tag == "11B2":
+                fllim = [nupeakind-4, 0, 0, 0]
+                fhlim = [nupeakind+4, 0, 0, 0]
+            else:
+                fllim = [nupeakind-2, 0, 0, 0]
+                fhlim = [nupeakind+2, 0, 0, 0]
+            try:
+                params = BL21.comp_param(data = data, mode = 'gaussian', n = 1, pllim = pllim, phlim = phlim, fllim = fllim, fhlim = fhlim, factor = 20.5, fax = fax, tag = tag)
+                tfdmarr.append(params[3][0])
+                tfdmarr.append(data)
+                if plot_center == True:
+                    BL21.data_plot(data = scrunchdat, tag = bursts[i][0], fax = fax, center = params[1], RSN = False, vmax = 170*8, ext = ext)
+                plt.clf()
+            except ValueError:
+                print("No fit found for burst " + str(tag))
+                tfdmarr.pop(-1)
+            except IndexError:
+                print("Burst " + str(tag) + " not properly fit")
+                tfdmarr.pop(-1)
+            '''
+            if tag == "11A1":
+                BL21.comp_plot(data = [params[3][0]], name = 'Fluence', fax = fax, units = 'Jy ms', tag = 'FB' + bursts[i][0], labels = ('F'), log = False, RSN = False)
+            elif tag == "11B2":
+                BL21.comp_plot(data = [params[3][0]], name = 'Fluence', fax = fax, units = 'Jy ms', tag = 'FB' + bursts[i][0], labels = ('F'), log = False, RSN = False)
+            '''
+    return(tfdmarr)
+
+def fluence_moment_scatt(moment, RSN, singleA):
+    '''
+    This function plot the total fluence vs. statistical moments of original 21 bursts
+    and an example few from the extended data set
+    '''
+    #First get info from original data set (4p files)
+    single_comp_BL21_tfdmarr = BL21.burst_stats(multi = False, plot = False)[3] #single component burst info
+    multi_comp_BL21_tfdmarr = BL21.burst_stats(multi = True, plot = False)[3] #multi component burst info
+    combined_tfdmarr = np.concatenate(single_comp_BL21_tfdmarr, multi_comp_BL21_tfdmarr)
+    #Now find the info for extended data set bursts (filterbank files)
+    BurstInfo = extract_bursts(namefile = 'full_data.txt', plot = False)
+    tfdarr = get_fluence(bursts = BurstInfo, plot_center = False)
+    for i in range(len(tfdarr)):
+        moms = BL21.moments(i[2])
+        tfdarr[i].append(moms)
+        combined_tfdmarr.append(tfdarr[i])
+    BL21.fluence_moment_scatt(tfdmarr = combined_tfdmarr, moment = moment, RSN = RSN, singleA = singleA)
 
 def main():
     #files = ["spliced_guppi_57991_49905_DIAG_FRB121102_0011.gpuspec.0001.8.fil", "spliced_guppi_57991_51723_DIAG_FRB121102_0012.gpuspec.0001.8.fil", "spliced_guppi_57991_53535_DIAG_FRB121102_0013.gpuspec.0001.8.fil", "spliced_guppi_57991_55354_DIAG_FRB121102_0014.gpuspec.0001.8.fil", "spliced_guppi_57991_57166_DIAG_FRB121102_0015.gpuspec.0001.8.fil", "spliced_guppi_57991_58976_DIAG_FRB121102_0016.gpuspec.0001.8.fil", "spliced_guppi_57991_60787_DIAG_FRB121102_0017.gpuspec.0001.8.fil", "spliced_guppi_57991_62598_DIAG_FRB121102_0018.gpuspec.0001.8.fil", "spliced_guppi_57991_64409_DIAG_FRB121102_0019.gpuspec.0001.8.fil", "spliced_guppi_57991_66219_DIAG_FRB121102_0020.gpuspec.0001.8.fil"]
     #for i in range(len(files)):
     #dat = load(filename = "spliced_guppi_57991_66219_DIAG_FRB121102_0020.gpuspec.0001.8.fil", info = True, tstart = 0, tstop = 1000)
-    BurstInfo = extract_bursts(namefile = 'full_data.txt', plot = False)
-    get_fluence(bursts = BurstInfo, plot = False)
+    #BurstInfo = extract_bursts(namefile = 'full_data.txt', plot = False)
+    #print(get_fluence(bursts = BurstInfo, plot_center = False))
+    fluence_moment_scatt(moment = 'Skew', RSN = False, singleA = False)
 
 main()

@@ -36,17 +36,20 @@ def find_peak(data):
             peak - Peak flux value
             burst - Data array containing peak flux value
             freq_index - Array index of input data containing peak value
+            tbin - Time bin index of peak flux value
     '''
     peak = 0        # Peak Value
     burst = []      # Burst Data Array
-    freq = 0        # Frequency Index
+    freq_index = 0        # Frequency Index
+    tbin = 0
     for i in range(0,len(data)):          # Move Through Frequency Channels
         for j in range(0,len(data[i])):   # Move Through Phase Bins
             if data[i][j] > peak:
                 peak = data[i][j]
                 burst = data[i]
                 freq_index = i
-    return(peak, burst, freq_index)
+                tbin = j
+    return(peak, burst, freq_index, tbin)
 
 def burst_prop(burst):
     '''
@@ -1077,8 +1080,8 @@ def reduced_SN_props(singleA):
 
 def main():
     print('Initializing BL21 Burst Code')
-    A = start(filename = '11A_16sec.calib.4p')
-    fit(burst = A[1][30], mode = 'gaussian', n = 2, llimit = 325, hlimit = 475, freq = np.round(A[2][30]), tag = '11A', plot = True)
+    #A = start(filename = '11A_16sec.calib.4p')
+    #fit(burst = A[1][30], mode = 'gaussian', n = 2, llimit = 325, hlimit = 475, freq = np.round(A[2][30]), tag = '11A', plot = True)
     #reduced_SN_props(singleA = True)
     #data_plot(data = reducedA[0], fax = reducedA[3], tag = '11A-1', center = reducedAprops1[1], RSN = True)
     #comp_plot(data = [reducedBprops[3][0]], name = 'Fluence', fax = reducedB[3], units = 'Jy ms', tag = '12B, labels = ('Comp1'), log = False, RSN = True)
