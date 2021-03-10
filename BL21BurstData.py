@@ -623,6 +623,8 @@ def fluence_moment_scatt(tfdmarr, moment, RSN, singleA):
     '''
     moments = []
     fluences = []
+    Extmoments = []
+    Extfluences = []
     for i in range(0, len(tfdmarr)):
         if tfdmarr[i][0] == '11A':
             Amoments = []
@@ -646,6 +648,14 @@ def fluence_moment_scatt(tfdmarr, moment, RSN, singleA):
                     Bmoments.append(tfdmarr[i][3][2][j])
                 elif moment == 'Kurtosis':
                     Bmoments.append(tfdmarr[i][3][3][j])
+        elif len(tfdmarr[i][0]) > 3:
+            Extfluences.append(np.sum(tfdmarr[i][1]))
+            if moment == 'SD':
+                Extmoments.append(tfdmarr[i][3][1])
+            elif moment == 'Skew':
+                Extmoments.append(tfdmarr[i][3][2])
+            elif moment == 'Kurtosis':
+                Extmoments.append(tfdmarr[i][3][3])
         else:
             fluences.append(np.sum(tfdmarr[i][1]))
             if moment == 'SD':
@@ -656,20 +666,21 @@ def fluence_moment_scatt(tfdmarr, moment, RSN, singleA):
                 moments.append(tfdmarr[i][3][3])
     plt.scatter(x = Amoments, y = Afluences, c = 'orange', marker = '*')
     plt.scatter(x = Bmoments, y = Bfluences, c = 'black', marker = 'D')
+    plt.scatter(x = Extmoments, y = Extfluences, c = 'red', marker = 'h')
     plt.scatter(x = moments, y = fluences)
     plt.xlabel(moment)
     plt.ylabel('Total Fluence(Jy ms)')
     if RSN == True:
         plt.title('Total Fluence vs. ' + moment + ' with S/N of Bursts 11A and 12B Reduced')
         if singleA == True:
-            plt.legend(labels = ('Burst 11A, Single Comp', 'Burst 12B', 'Single Comp Bursts'))
+            plt.legend(labels = ('Burst 11A, Single Comp', 'Burst 12B', 'Low S/N Bursts', 'Single Comp Bursts'))
             plt.savefig('Reduced1_FvM' + moment)
         else:
-            plt.legend(labels = ('Burst 11A', 'Burst 12B', 'Single Comp Bursts'))
+            plt.legend(labels = ('Burst 11A', 'Burst 12B', 'Low S/N Bursts', 'Single Comp Bursts'))
             plt.savefig('Reduced_FvM' + moment)
     else:
         plt.title('Total Fluence vs. ' + moment)
-        plt.legend(labels = ('Burst 11A', 'Burst 12B', 'Single Comp Bursts'))
+        plt.legend(labels = ('Burst 11A', 'Burst 12B', 'Low S/N Bursts', 'Single Comp Bursts'))
         plt.savefig('FvM' + moment)
 
 def burst_11A_prop():

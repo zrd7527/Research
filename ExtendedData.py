@@ -189,13 +189,13 @@ def get_fluence(bursts, plot_center):
     Reurns:
         None
     '''
-    tfdmarr = []
+    tfdarr = []
     for i in range(len(bursts)):
         if len(bursts[i][0]) < 4:
             pass
         else:
             tag = bursts[i][0]
-            tfdmarr.append(tag)
+            tfdarr.append([tag])
             print(tag)
             tsamp = bursts[i][2]
             nupeakGHz = bursts[i][5]
@@ -212,24 +212,24 @@ def get_fluence(bursts, plot_center):
                 fhlim = [nupeakind+2, 0, 0, 0]
             try:
                 params = BL21.comp_param(data = data, mode = 'gaussian', n = 1, pllim = pllim, phlim = phlim, fllim = fllim, fhlim = fhlim, factor = 20.5, fax = fax, tag = tag)
-                tfdmarr.append(params[3][0])
-                tfdmarr.append(data)
+                tfdarr[-1].append([params[3][0]])
+                tfdarr[-1].append(data)
                 if plot_center == True:
                     BL21.data_plot(data = scrunchdat, tag = bursts[i][0], fax = fax, center = params[1], RSN = False, vmax = 170*8, ext = ext)
                 plt.clf()
             except ValueError:
                 print("No fit found for burst " + str(tag))
-                tfdmarr.pop(-1)
+                tfdarr.pop(-1)
             except IndexError:
                 print("Burst " + str(tag) + " not properly fit")
-                tfdmarr.pop(-1)
+                tfdarr.pop(-1)
             '''
             if tag == "11A1":
                 BL21.comp_plot(data = [params[3][0]], name = 'Fluence', fax = fax, units = 'Jy ms', tag = 'FB' + bursts[i][0], labels = ('F'), log = False, RSN = False)
             elif tag == "11B2":
                 BL21.comp_plot(data = [params[3][0]], name = 'Fluence', fax = fax, units = 'Jy ms', tag = 'FB' + bursts[i][0], labels = ('F'), log = False, RSN = False)
             '''
-    return(tfdmarr)
+    return(tfdarr)
 
 def fluence_moment_scatt(moment, RSN, singleA):
     '''
@@ -239,12 +239,21 @@ def fluence_moment_scatt(moment, RSN, singleA):
     #First get info from original data set (4p files)
     single_comp_BL21_tfdmarr = BL21.burst_stats(multi = False, plot = False)[3] #single component burst info
     multi_comp_BL21_tfdmarr = BL21.burst_stats(multi = True, plot = False)[3] #multi component burst info
-    combined_tfdmarr = np.concatenate(single_comp_BL21_tfdmarr, multi_comp_BL21_tfdmarr)
+    for i in range(len(multi_comp_BL21_tfdmarr)):
+        if multi_comp_BL21_tfdmarr[i][0] == '11E':
+            pass
+        elif multi_comp_BL21_tfdmarr[i][0] == '11K':
+            pass
+        elif multi_comp_BL21_tfdmarr[i][0] == '11O':
+            pass
+        else:
+            single_comp_BL21_tfdmarr.append(multi_comp_BL21_tfdmarr[i])
+    combined_tfdmarr = single_comp_BL21_tfdmarr
     #Now find the info for extended data set bursts (filterbank files)
     BurstInfo = extract_bursts(namefile = 'full_data.txt', plot = False)
     tfdarr = get_fluence(bursts = BurstInfo, plot_center = False)
     for i in range(len(tfdarr)):
-        moms = BL21.moments(i[2])
+        moms = BL21.moments(tfdarr[i][1])
         tfdarr[i].append(moms)
         combined_tfdmarr.append(tfdarr[i])
     BL21.fluence_moment_scatt(tfdmarr = combined_tfdmarr, moment = moment, RSN = RSN, singleA = singleA)
