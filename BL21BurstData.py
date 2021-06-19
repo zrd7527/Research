@@ -1093,10 +1093,9 @@ def make_dynamic_spectra():
     '''
         Outputs dyanmic spectra of all bursts in Brreakthrough Listen data set
     '''
-    #A = burst_11A_prop()
-    #peak = find_peak(A[1])
+    A = burst_11A_prop()
+    peak = find_peak(A[1])
     TimeConversion = 25.6   #Phase Bins per millisecond
-    '''
     FluxConversion = peak[0]/A[2]  #Flux units per milliJansky
     ConvertedData = A[1]/FluxConversion
     data_plot(data = ConvertedData, fax = A[3], tag = '11A', center = [], RSN = False, vmax = 0, ext = 512/TimeConversion)
@@ -1113,7 +1112,6 @@ def make_dynamic_spectra():
         FluxConversion = peak[0]/burst[2]
         ConvertedData = burst[1]/FluxConversion
         data_plot(data = ConvertedData, fax = burst[3], tag = tag, center = [], RSN = False, vmax = 0, ext = 512/TimeConversion)
-    '''
     unrestags = ['11E', '11K', '11O']
     for utag in unrestags:
         burst = unres_comp_prop(tag = utag, single = True)
