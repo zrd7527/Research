@@ -514,7 +514,7 @@ def gauss_lnorm_fit(xin, burst, dattype, units, fax, comp):
     plt.title('Gauss Plus LogNormal fit to ' + dattype + ' of ' + comp)
     plt.savefig(comp[0:4] + comp[-1] + '_GaLNorm_Fit')
 
-def data_plot(data, fax, tag, center, RSN, vmax, ext):
+def data_plot(data, fax, tag, center, RSN, vmax, ext=512):
     ''' 
         Makes 3D data plot of entire data file, x is phase, y is frequency, z is flux density
         Inputs:
@@ -524,22 +524,22 @@ def data_plot(data, fax, tag, center, RSN, vmax, ext):
             center - Array of component centers from comp_param(), input empty array if no center
             RSN - Boolean, True if S/N of burst is reduced
             vmax - Maximum value of data plot, 0 if automatic interpolation desired
-            ext - Length of horizontal axis
+            ext - Length of horizontal axis, automatically set to 512 unless specified
         Returns:
             nothing
     '''
     if vmax > 0:
-        plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'lower', vmin = 0, vmax = vmax, extent = [0, ext, fax[0], fax[len(fax)-1]])
+        plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'upper', vmin = 0, vmax = vmax, extent = [0, ext, fax[len(fax)-1], fax[0]])
     else:
-        plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'lower', extent = [0,512,fax[0],fax[len(fax)-1]])
-    plt.xlabel('Phase Bins')
+        plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'upper', extent = [0,ext,fax[len(fax)-1],fax[0]])
+    plt.xlabel('Time(ms)')
     plt.ylabel('Frequency(MHz)')
     if RSN == True:
         plt.title('Burst ' + tag[0:3] + ', SN Reduced')
     else:
         plt.title('Burst ' + tag + ', Dead Channels Removed')
     cbar = plt.colorbar()
-    cbar.set_label('Flux Density')
+    cbar.set_label('Flux Density(mJy)')
     if len(center) > 0:
         for i in range(0, len(center)):
             plt.plot(center[i], fax, 'm')
@@ -1089,9 +1089,42 @@ def reduced_SN_props(singleA):
     fluence_moment_scatt(tfdmarr = fvm[3], moment = 'Kurtosis', RSN = True, singleA = singleA)
     plt.clf()
 
+def make_dynamic_spectra():
+    '''
+        Outputs dyanmic spectra of all bursts in Brreakthrough Listen data set
+    '''
+    #A = burst_11A_prop()
+    #peak = find_peak(A[1])
+    TimeConversion = 25.6   #Phase Bins per millisecond
+    '''
+    FluxConversion = peak[0]/A[2]  #Flux units per milliJansky
+    ConvertedData = A[1]/FluxConversion
+    data_plot(data = ConvertedData, fax = A[3], tag = '11A', center = [], RSN = False, vmax = 0, ext = 512/TimeConversion)
+    B = burst_12B_prop()
+    peak = find_peak(B[1])
+    TimeConversion12B = 25  #Burst 12B has a longer horizontal axis
+    FluxConversion = peak[0]/B[2]
+    ConvertedData = B[1]/FluxConversion
+    data_plot(data = ConvertedData, fax = B[3], tag = '12B', center = [], RSN = False, vmax = 0, ext = 500/TimeConversion12B)
+    tags = ['11B', '11C', '11D', '11F', '11G', '11H', '11I', '11J', '11M', '11N', '11Q', '12A', '12C']
+    for tag in tags:
+        burst = single_comp_prop(tag)
+        peak = find_peak(burst[1])
+        FluxConversion = peak[0]/burst[2]
+        ConvertedData = burst[1]/FluxConversion
+        data_plot(data = ConvertedData, fax = burst[3], tag = tag, center = [], RSN = False, vmax = 0, ext = 512/TimeConversion)
+    '''
+    unrestags = ['11E', '11K', '11O']
+    for utag in unrestags:
+        burst = unres_comp_prop(tag = utag, single = True)
+        peak = find_peak(burst[1])
+        FluxConversion = peak[0]/burst[2]
+        ConvertedData = burst[1]/FluxConversion
+        data_plot(data = ConvertedData, fax = burst[3], tag = utag, center = [], RSN = False, vmax = 0, ext = 512/TimeConversion)
+
 def main():
     print('Initializing BL21 Burst Code')
-    #A = start(filename = '11A_16sec.calib.4p')
+    make_dynamic_spectra()
     #fit(burst = A[1][30], mode = 'gaussian', n = 2, llimit = 325, hlimit = 475, freq = np.round(A[2][30]), tag = '11A', plot = True)
     #reduced_SN_props(singleA = True)
     #data_plot(data = reducedA[0], fax = reducedA[3], tag = '11A-1', center = reducedAprops1[1], RSN = True)
