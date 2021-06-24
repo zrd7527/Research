@@ -326,7 +326,7 @@ def comp_param(data, mode, n, pllim, phlim, fllim, fhlim, factor, fax, tag):
     widths = [ [], [], [], [] ]
     fluence = [ [], [], [], [] ]
     for i in range(0, len(data)):
-        GetFit = fit(burst = data[i], mode = mode, n = n, llimit = pllim[0], hlimit = phlim[n-1], freq = fax[i], tag = tag, plot = False)   # Automatic fit routine
+        GetFit = fit(burst = data[i], mode = mode, n = n, llimit = pllim[0], hlimit = phlim[n-1], freq = fax[i], tag = tag, plot = [])   # Automatic fit routine
         for j in range(0, len(GetFit[1])):
             if pllim[0] < GetFit[1][j] < phlim[0] and (len(mus[0]) - 1) < i and fllim[0] < i < fhlim[0]:         # Check if component center is within given phase limits and frequency limits
                 x = burst_prop(data[i][(pllim[0]-3):pllim[1]])
@@ -416,7 +416,8 @@ def fit(burst, mode, n, llimit, hlimit, freq, tag, plot):
             hlimit - Integer, upper limit of phase range to be fit
             freq - Frequency of data array, for plotting
             tag - Burst name, e.g. 11A, for plotting
-            plot - Boolean, True to make plot and see accuracy of fit
+            plot - Tuple of time conversion (from phase bins) and flux conversion IN THAT ORDER. Used to make time series plot and see accuracy of fit.
+                   Enter empty array for no plotting.
         Returns:
             amp - Array of component amplitudes
             mu - Array of component centers
@@ -432,11 +433,13 @@ def fit(burst, mode, n, llimit, hlimit, freq, tag, plot):
         retval += u.gaussian(x, pfit[3*j], pfit[3*j+1], pfit[3*j+2])        # Add gaussian arrays together for plotting
         amp.append(pfit[3*j])      # Append individual gaussian parameters for analysis 
         mu.append(pfit[3*j+1])
-    if plot == True:
-        plt.plot(x, retval, 'k')
-        plt.plot(x, burst[llimit:hlimit])
-        plt.xlabel('Phase Bins')
-        plt.ylabel('Flux Density')
+    if len(plot) > 0:
+        TimeConversion = plot[0]
+        FluxConversion = plot[1]
+        plt.plot(x/TimeConversion, retval/FluxConversion, 'k')
+        plt.plot(x/TimeConversion, burst[llimit:hlimit]/FluxConversion)
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Flux Density (mJy)')
         plt.title(tag + ' Peak Flux (at ' + str(round(freq)) + ' MHz)')
         plt.savefig(tag + '_Fit_Test')
     return(amp, mu, retval)
@@ -539,7 +542,7 @@ def data_plot(data, fax, tag, center, RSN, vmax, ext=512):
     else:
         plt.title('Burst ' + tag + ', Dead Channels Removed')
     cbar = plt.colorbar()
-    cbar.set_label('Flux Density(mJy)')
+    cbar.set_label('Flux Density (mJy)')
     if len(center) > 0:
         for i in range(0, len(center)):
             plt.plot(center[i], fax, 'm')
@@ -1089,22 +1092,44 @@ def reduced_SN_props(singleA):
     fluence_moment_scatt(tfdmarr = fvm[3], moment = 'Kurtosis', RSN = True, singleA = singleA)
     plt.clf()
 
-def make_dynamic_spectra():
+def make_dynamic_spectra(center):
     '''
         Outputs dyanmic spectra of all bursts in Brreakthrough Listen data set
-    '''
+        Inputs:
+            center - Boolean, True to overplot the Gaussian fit centers ont components of burst 11A and 12B
+        Returns:
+            nothing
+   '''
     A = burst_11A_prop()
     peak = find_peak(A[1])
     TimeConversion = 25.6   #Phase Bins per millisecond
     FluxConversion = peak[0]/A[2]  #Flux units per milliJansky
     ConvertedData = A[1]/FluxConversion
-    data_plot(data = ConvertedData, fax = A[3], tag = '11A', center = [], RSN = False, vmax = 0, ext = 512/TimeConversion)
+    if center == True:
+        CenterConversion = []
+        for i in range(0, len(A[0][1])):
+            centarr = []
+            for j in range(0, len(A[0][1][i])):
+                centarr.append(A[0][1][i][j]/TimeConversion)
+            CenterConversion.append(centarr)
+        data_plot(data = ConvertedData, fax = A[3], tag = '11A', center = CenterConversion, RSN = False, vmax = 0, ext = 512/TimeConversion)
+    else:
+        data_plot(data = ConvertedData, fax = A[3], tag = '11A', center = [], RSN = False, vmax = 0, ext = 512/Timeconversion)
     B = burst_12B_prop()
     peak = find_peak(B[1])
     TimeConversion12B = 25  #Burst 12B has a longer horizontal axis
     FluxConversion = peak[0]/B[2]
     ConvertedData = B[1]/FluxConversion
-    data_plot(data = ConvertedData, fax = B[3], tag = '12B', center = [], RSN = False, vmax = 0, ext = 500/TimeConversion12B)
+    if center == True:
+        CenterConversion12B = []
+        for i in range(0, len(B[0][1])):
+            centarr = []
+            for j in range(0, len(B[0][1][i])):
+                centarr.append(B[0][1][i][j]/TimeConversion12B)
+            CenterConversion12B.append(centarr)
+        data_plot(data = ConvertedData, fax = B[3], tag = '12B', center = CenterConversion12B, RSN = False, vmax = 0, ext = 500/TimeConversion12B)
+    else:
+        data_plot(data = ConvertedData, fax = B[3], tag = '12B', center = [], RSN = False, vmax = 0, ext = 500/TimeConversion)
     tags = ['11B', '11C', '11D', '11F', '11G', '11H', '11I', '11J', '11M', '11N', '11Q', '12A', '12C']
     for tag in tags:
         burst = single_comp_prop(tag)
@@ -1122,8 +1147,14 @@ def make_dynamic_spectra():
 
 def main():
     print('Initializing BL21 Burst Code')
-    make_dynamic_spectra()
-    #fit(burst = A[1][30], mode = 'gaussian', n = 2, llimit = 325, hlimit = 475, freq = np.round(A[2][30]), tag = '11A', plot = True)
+    #make_dynamic_spectra(center = True)
+    '''
+    A = burst_11A_prop()
+    peakA = find_peak(A[1])
+    TimeConversion = 25.6 #512 phase bins divided by 20 milliseconds
+    FluxConversion = peakA[0]/A[2]
+    fit(burst = A[1][peakA[2]], mode = 'gaussian', n = 4, llimit = 340, hlimit = 400, freq = A[3][peakA[2]], tag = '11A', plot = [TimeConversion, FluxConversion])
+    '''
     #reduced_SN_props(singleA = True)
     #data_plot(data = reducedA[0], fax = reducedA[3], tag = '11A-1', center = reducedAprops1[1], RSN = True)
     #comp_plot(data = [reducedBprops[3][0]], name = 'Fluence', fax = reducedB[3], units = 'Jy ms', tag = '12B, labels = ('Comp1'), log = False, RSN = True)
