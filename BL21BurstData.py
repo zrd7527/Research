@@ -531,12 +531,13 @@ def data_plot(data, fax, tag, center, RSN, vmax, ext=512):
         Returns:
             nothing
     '''
-    if vmax > 0:
+    if vmax > 0:    #This is only used for extended data set
         plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'upper', vmin = 0, vmax = vmax, extent = [0, ext, fax[len(fax)-1], fax[0]])
     else:
         plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'upper', extent = [0,ext,fax[len(fax)-1],fax[0]])
     plt.xlabel('Time(ms)')
     plt.ylabel('Frequency(MHz)')
+    plt.axhline(y = 7048, color = 'orange', linestyle = '--')    #Overplots dashed line at the specified y index
     if RSN == True:
         plt.title('Burst ' + tag[0:3] + ', SN Reduced')
     else:
@@ -580,16 +581,16 @@ def comp_plot(data, name, fax, units, tag, labels, log, RSN):
         plt.xscale('log')
         plt.xlabel('Log Frequency')
         plt.ylabel('Log ' + name)
-        plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
+        plt.title(name + ' Distribution of Burst ' + tag)
         plt.savefig(tag + '_Log_' + name)
     else:
         plt.xlabel('Frequency(MHz)')
         plt.ylabel(name + '(' + units + ')')
         if RSN == True:
-            plt.title(name + ' vs. Frequency of Components of Reduced S/N Burst ' + tag[0:3])
+            plt.title(name + ' Distribution of Reduced S/N Burst ' + tag[0:3])
             plt.savefig(tag + '_Reduced_' + name)
         else:
-            plt.title(name + ' Versus Frequency of Components of Burst ' + tag)
+            plt.title(name + ' Distribution of Burst ' + tag)
             plt.savefig(tag + '_' + name)
 
 def moment_hist(vals, xname, pname, multicomp):
@@ -1144,25 +1145,22 @@ def make_dynamic_spectra(center):
         FluxConversion = peak[0]/burst[2]
         ConvertedData = burst[1]/FluxConversion
         data_plot(data = ConvertedData, fax = burst[3], tag = utag, center = [], RSN = False, vmax = 0, ext = 512/TimeConversion)
+    return()
 
 def main():
     print('Initializing BL21 Burst Code')
     #make_dynamic_spectra(center = True)
-    '''
     A = burst_11A_prop()
-    peakA = find_peak(A[1])
-    TimeConversion = 25.6 #512 phase bins divided by 20 milliseconds
-    FluxConversion = peakA[0]/A[2]
-    fit(burst = A[1][peakA[2]], mode = 'gaussian', n = 4, llimit = 340, hlimit = 400, freq = A[3][peakA[2]], tag = '11A', plot = [TimeConversion, FluxConversion])
-    '''
+    #peakA = find_peak(A[1])
+    #TimeConversion = 25.6 #512 phase bins divided by 20 milliseconds
+    #FluxConversion = peakA[0]/A[2]
+    #fit(burst = A[1][peakA[2]], mode = 'gaussian', n = 4, llimit = 340, hlimit = 400, freq = A[3][peakA[2]], tag = '11A', plot = [TimeConversion, FluxConversion])
     #reduced_SN_props(singleA = True)
     #data_plot(data = reducedA[0], fax = reducedA[3], tag = '11A-1', center = reducedAprops1[1], RSN = True)
-    #comp_plot(data = [reducedBprops[3][0]], name = 'Fluence', fax = reducedB[3], units = 'Jy ms', tag = '12B, labels = ('Comp1'), log = False, RSN = True)
-    '''
-    stats1 = burst_stats(multi = False, plot = False)
-    stats2 = burst_stats(multi = True, plot = False)
-    ks = KS_test(vals1 = stats1, vals2 = stats2, plot = False, ind = 1, name = 'Skew')
-    print(ks)
-    '''
+    comp_plot(data = A[0][3], name = 'Fluence', fax = A[3], units = 'Jy ms', tag = '11A', labels = ('Comp1', 'Comp2', 'Comp3', 'Comp4'), log = False, RSN = False)
+    #stats1 = burst_stats(multi = False, plot = False)
+    #stats2 = burst_stats(multi = True, plot = False)
+    #ks = KS_test(vals1 = stats1, vals2 = stats2, plot = False, ind = 1, name = 'Skew')
+    #print(ks)
 
 main()
