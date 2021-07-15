@@ -537,7 +537,7 @@ def data_plot(data, fax, tag, center, RSN, vmax, ext=512):
         plt.imshow(X = data, aspect = 'auto', interpolation = 'nearest', origin = 'upper', extent = [0,ext,fax[len(fax)-1],fax[0]])
     plt.xlabel('Time(ms)')
     plt.ylabel('Frequency(MHz)')
-    plt.axhline(y = 7048, color = 'orange', linestyle = '--')    #Overplots dashed line at the specified y index
+    #plt.axhline(y = 7048, color = 'orange', linestyle = '--')    #Overplots dashed line at the specified y index
     if RSN == True:
         plt.title('Burst ' + tag[0:3] + ', SN Reduced')
     else:
@@ -1150,14 +1150,20 @@ def make_dynamic_spectra(center):
 def main():
     print('Initializing BL21 Burst Code')
     #make_dynamic_spectra(center = True)
-    A = burst_11A_prop()
+    #A = burst_11A_prop()
     #peakA = find_peak(A[1])
     #TimeConversion = 25.6 #512 phase bins divided by 20 milliseconds
     #FluxConversion = peakA[0]/A[2]
     #fit(burst = A[1][peakA[2]], mode = 'gaussian', n = 4, llimit = 340, hlimit = 400, freq = A[3][peakA[2]], tag = '11A', plot = [TimeConversion, FluxConversion])
     #reduced_SN_props(singleA = True)
-    #data_plot(data = reducedA[0], fax = reducedA[3], tag = '11A-1', center = reducedAprops1[1], RSN = True)
-    comp_plot(data = A[0][3], name = 'Fluence', fax = A[3], units = 'Jy ms', tag = '11A', labels = ('Comp1', 'Comp2', 'Comp3', 'Comp4'), log = False, RSN = False)
+    '''
+    AlowSN = SN_reducer(data = A[1], peak = peakA[0], SN = 36.8, desiredSN = 13.3)
+    lowSNdata = []
+    for i in range(len(AlowSN)):
+        lowSNdata.append(AlowSN[i]/FluxConversion)
+    data_plot(data = lowSNdata, fax = A[3], tag = '11A', center = [], RSN = True, vmax = 380.5, ext = 512/TimeConversion)
+    '''
+    #comp_plot(data = A[0][3], name = 'Fluence', fax = A[3], units = 'Jy ms', tag = '11A', labels = ('Comp1', 'Comp2', 'Comp3', 'Comp4'), log = False, RSN = False)
     #stats1 = burst_stats(multi = False, plot = False)
     #stats2 = burst_stats(multi = True, plot = False)
     #ks = KS_test(vals1 = stats1, vals2 = stats2, plot = False, ind = 1, name = 'Skew')

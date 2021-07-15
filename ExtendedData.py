@@ -74,11 +74,16 @@ def data_plot(data, name, tag, fax, vmax, ext):
         Returns:
             nothing
     '''
-    plt.imshow(data, origin = 'lower', interpolation = 'nearest', aspect = 'auto', vmin = 0, vmax = vmax, extent = [0, ext, fax[0], fax[len(fax)-1]])
+    TimeConversion = 25.6
+    FluxConversion = 64.5
+    newdat = []
+    for i in range(len(data)):
+        newdat.append(data[i]/FluxConversion)
+    plt.imshow(newdat, origin = 'upper', interpolation = 'nearest', aspect = 'auto', vmin = 0, vmax = vmax/FluxConversion, extent = [0, ext/TimeConversion, fax[len(fax)-1], fax[0]])
     cbar = plt.colorbar()
-    cbar.set_label('Flux Density')
+    cbar.set_label('Flux Density (mJy)')
     plt.ylabel('Frequency (MHz)')
-    plt.xlabel('Time Bins')
+    plt.xlabel('Time (ms)')
     plt.title(name + ' Data of Burst ' + tag)
     plt.savefig(name + '_' + tag)
 
@@ -259,11 +264,11 @@ def fluence_moment_scatt(moment, RSN, singleA):
     BL21.fluence_moment_scatt(tfdmarr = combined_tfdmarr, moment = moment, RSN = RSN, singleA = singleA)
 
 def main():
-    #files = ["spliced_guppi_57991_49905_DIAG_FRB121102_0011.gpuspec.0001.8.fil", "spliced_guppi_57991_51723_DIAG_FRB121102_0012.gpuspec.0001.8.fil", "spliced_guppi_57991_53535_DIAG_FRB121102_0013.gpuspec.0001.8.fil", "spliced_guppi_57991_55354_DIAG_FRB121102_0014.gpuspec.0001.8.fil", "spliced_guppi_57991_57166_DIAG_FRB121102_0015.gpuspec.0001.8.fil", "spliced_guppi_57991_58976_DIAG_FRB121102_0016.gpuspec.0001.8.fil", "spliced_guppi_57991_60787_DIAG_FRB121102_0017.gpuspec.0001.8.fil", "spliced_guppi_57991_62598_DIAG_FRB121102_0018.gpuspec.0001.8.fil", "spliced_guppi_57991_64409_DIAG_FRB121102_0019.gpuspec.0001.8.fil", "spliced_guppi_57991_66219_DIAG_FRB121102_0020.gpuspec.0001.8.fil"]
-    #for i in range(len(files)):
-    #dat = load(filename = "spliced_guppi_57991_66219_DIAG_FRB121102_0020.gpuspec.0001.8.fil", info = True, tstart = 0, tstop = 1000)
-    #BurstInfo = extract_bursts(namefile = 'full_data.txt', plot = False)
+    files = ["spliced_guppi_57991_49905_DIAG_FRB121102_0011.gpuspec.0001.8.fil", "spliced_guppi_57991_51723_DIAG_FRB121102_0012.gpuspec.0001.8.fil", "spliced_guppi_57991_53535_DIAG_FRB121102_0013.gpuspec.0001.8.fil", "spliced_guppi_57991_55354_DIAG_FRB121102_0014.gpuspec.0001.8.fil", "spliced_guppi_57991_57166_DIAG_FRB121102_0015.gpuspec.0001.8.fil", "spliced_guppi_57991_58976_DIAG_FRB121102_0016.gpuspec.0001.8.fil", "spliced_guppi_57991_60787_DIAG_FRB121102_0017.gpuspec.0001.8.fil", "spliced_guppi_57991_62598_DIAG_FRB121102_0018.gpuspec.0001.8.fil", "spliced_guppi_57991_64409_DIAG_FRB121102_0019.gpuspec.0001.8.fil", "spliced_guppi_57991_66219_DIAG_FRB121102_0020.gpuspec.0001.8.fil"]
+    for i in range(len(files)):
+        dat = load(filename = files[i], info = False, tstart = 0, tstop = 1000)
+        BurstInfo = extract_bursts(namefile = 'full_data.txt', plot = True)
     #print(get_fluence(bursts = BurstInfo, plot_center = False))
-    fluence_moment_scatt(moment = 'Skew', RSN = False, singleA = False)
+    #fluence_moment_scatt(moment = 'Skew', RSN = False, singleA = False)
 
 main()
